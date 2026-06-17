@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+dev.db
+dev.db-journal
+.env
+.env.local
+/uploads
+# User uploads are written to public/uploads (see src/lib/storage.ts); keep the
+# directory but never commit uploaded files.
+/public/uploads/*
+!/public/uploads/.gitkeep
+*.log
+.DS_Store
+next-env.d.ts

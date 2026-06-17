@@ -1,0 +1,135 @@
+// Prisma schema for the ChatGPT clone.
+// Provider: SQLite. DATABASE_URL="file:./dev.db"
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String  @id @default(cuid())
+  name           String?
+  email          String  @unique
+  hashedPassword String?
+  image          String?
+  createdAt      DateTime @default(now())
+
+  accounts      Account[]
+  sessions      Session[]
+  conversations Conversation[]
+  mcpServers    McpServer[]
+}
+
+// ---- NextAuth standard models ----
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---- Application models ----
+
+model Conversation {
+  id        String   @id @default(cuid())
+  title     String   @default("New chat")
+  userId    String
+  model     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@index([userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String // "user" | "assistant" | "system" | "tool"
+  content        String // Text
+  attachments    String? // JSON-encoded Attachment[]
+  toolCalls      String? // JSON-encoded tool call/result records
+  reasoning      String? // Reasoning summary text (assistant messages only)
+  reasoningMs    Int? // Time spent producing the reasoning summary, in ms
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+// A remote MCP (Model Context Protocol) server registered by a user, exposed in
+// the UI as a "Connector" (ChatGPT-style). Its tools are surfaced to the chat
+// agent when the connector is enabled + trusted + connected. All OAuth secrets
+// and tokens live ONLY in these columns and are never serialized to the client
+// (the API returns a sanitized McpConnector DTO — see src/lib/types.ts).
+model McpServer {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  url         String // MCP endpoint URL (Streamable HTTP)
+  description String?
+  enabled     Boolean @default(true)
+  trusted     Boolean @default(false)
+  // "none" | "pending" | "connected" | "error"
+  authStatus  String  @default("pending")
+
+  // ---- OAuth 2.1 (server-side only) ----
+  oauthClientId     String?
+  oauthClientSecret String?
+  // JSON: { authorizationEndpoint, tokenEndpoint, registrationEndpoint?, resource?, scope? }
+  oauthMetadata     String?
+  accessToken       String?
+  refreshToken      String?
+  tokenExpiresAt    DateTime?
+  pkceVerifier      String? // transient, set during a pending authorization
+  oauthState        String? // CSRF state, maps the OAuth callback back to this row
+
+  toolsCache String? // JSON-encoded McpToolInfo[]
+  lastError  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
