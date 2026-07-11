@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
+  Boxes,
+  CalendarClock,
   Check,
   LogOut,
   MoreHorizontal,
@@ -63,6 +65,7 @@ export interface SidebarProps {
 
 export function Sidebar({ open, onToggle }: SidebarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session } = useSession();
   const conversations = useChatStore((s) => s.conversations);
   const currentId = useChatStore((s) => s.currentId);
@@ -92,6 +95,9 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
     router.push("/");
   }
 
+  const schedulesActive = pathname === "/schedules";
+  const artifactsActive = pathname === "/artifacts";
+
   function beginRename(c: ConversationSummary) {
     setEditingId(c.id);
     setEditValue(c.title);
@@ -110,14 +116,30 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
   if (!open) {
     return (
-      <div className="flex h-full w-full flex-col items-center gap-2 bg-sidebar py-2.5">
-        <IconButton label="Open sidebar" onClick={onToggle}>
-          <PanelLeft size={20} />
-        </IconButton>
-        <IconButton label="New chat" onClick={handleNewChat}>
-          <PenSquare size={20} />
-        </IconButton>
-      </div>
+      <>
+        <div className="flex h-full w-full flex-col items-center gap-2 bg-sidebar py-2.5">
+          <IconButton label="Open sidebar" onClick={onToggle}>
+            <PanelLeft size={20} />
+          </IconButton>
+          <IconButton label="New chat" onClick={handleNewChat}>
+            <PenSquare size={20} />
+          </IconButton>
+          <IconButton
+            label="Artifacts"
+            active={artifactsActive}
+            onClick={() => router.push("/artifacts")}
+          >
+            <Boxes size={20} />
+          </IconButton>
+          <IconButton
+            label="Scheduled"
+            active={schedulesActive}
+            onClick={() => router.push("/schedules")}
+          >
+            <CalendarClock size={20} />
+          </IconButton>
+        </div>
+      </>
     );
   }
 
@@ -133,15 +155,33 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
         </IconButton>
       </div>
 
-      {/* New chat button */}
-      <div className="px-2.5">
+      {/* Scheduled nav */}
+      <div className="flex flex-col gap-0.5 px-2.5">
         <button
           type="button"
-          onClick={handleNewChat}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-hover"
+          onClick={() => router.push("/schedules")}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors",
+            schedulesActive
+              ? "bg-hover text-text-primary"
+              : "text-text-primary hover:bg-hover",
+          )}
         >
-          <PenSquare size={18} />
-          New chat
+          <CalendarClock size={18} />
+          Scheduled
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push("/artifacts")}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors",
+            artifactsActive
+              ? "bg-hover text-text-primary"
+              : "text-text-primary hover:bg-hover",
+          )}
+        >
+          <Boxes size={18} />
+          Artifacts
         </button>
       </div>
 
