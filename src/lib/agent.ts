@@ -51,6 +51,13 @@ export interface StreamChatParams {
    * the agent for this turn.
    */
   userId: string;
+  /**
+   * Extra system-prompt block for a project-scoped conversation (custom
+   * instructions + knowledge files), already composed by
+   * {@link import("@/lib/projects/prompt").loadProjectContext}. Appended after
+   * the base INSTRUCTIONS. Omitted for conversations not in a project.
+   */
+  projectContext?: string;
 }
 
 const INSTRUCTIONS = `You are a helpful, knowledgeable, and friendly AI assistant, similar to ChatGPT.
@@ -308,11 +315,18 @@ export async function* streamChat(
     );
   };
 
+  // Project-scoped conversations get their custom instructions + knowledge
+  // appended to the base system prompt for this run.
+  const projectContext = params.projectContext?.trim();
+  const instructions = projectContext
+    ? `${INSTRUCTIONS}\n\n${projectContext}`
+    : INSTRUCTIONS;
+
   let agent: Agent;
   try {
     agent = new Agent({
       name: "Assistant",
-      instructions: INSTRUCTIONS,
+      instructions,
       model: resolveModel(model),
       tools: agentTools,
       mcpServers: connectedServers,
@@ -525,4 +539,133 @@ export async function runChatCompletion(
     toolCalls,
     error,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Tool-less completion primitives (used by the deep-research orchestrator)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parameters for the tool-less completion primitives. Unlike {@link streamChat}
+ * there are no tools, MCP servers, artifacts, or conversation history — just a
+ * custom `system` instruction and one `user` turn. Used by the deep-research
+ * orchestrator for planning, per-source analysis, and the streamed final report.
+ */
+export interface CompletionParams {
+  /** Full system instructions for this call. */
+  system: string;
+  /** The single user message. */
+  user: string;
+  /** Model id (OPENAI_MODEL still overrides via resolveModel). */
+  model: string;
+  /** Reasoning effort; defaults to {@link DEFAULT_EFFORT}. */
+  effort?: ReasoningEffort;
+}
+
+/**
+ * Stream a tool-less, single-turn completion with custom `system` instructions.
+ * Yields the same `reasoning_delta` / `reasoning_done` / `delta` / `error`
+ * events as {@link streamChat} (no tool/artifact events — nothing is attached),
+ * so the output can be spliced straight into an SSE stream. The deep-research
+ * synthesis step uses this to stream the final report inline.
+ */
+export async function* streamCompletion(
+  params: CompletionParams,
+): AsyncIterable<StreamEvent> {
+  const effort: ReasoningEffort = params.effort ?? DEFAULT_EFFORT;
+
+  if (!ensureApiKey()) {
+    yield {
+      type: "error",
+      message:
+        "The server is missing OPENAI_API_KEY. Set it in your environment to enable research.",
+    };
+    return;
+  }
+
+  let agent: Agent;
+  try {
+    agent = new Agent({
+      name: "Researcher",
+      instructions: params.system,
+      model: resolveModel(params.model),
+      tools: [],
+      modelSettings: {
+        providerData: { reasoning: { effort, summary: "auto" } },
+      },
+    });
+  } catch (err) {
+    yield {
+      type: "error",
+      message:
+        err instanceof Error
+          ? `Failed to initialize model: ${err.message}`
+          : "Failed to initialize model.",
+    };
+    return;
+  }
+
+  // Mirror streamChat's raw-event mapping (see §9), minus the tool handling.
+  let reasoningDone = false;
+  try {
+    const streamed = await run(agent, [user(params.user)], { stream: true });
+    for await (const event of streamed as AsyncIterable<RunStreamEvent>) {
+      if (event.type !== "raw_model_stream_event") continue;
+      const data = event.data as {
+        type?: string;
+        delta?: unknown;
+        event?: { type?: string; delta?: unknown };
+      };
+      if (data?.type === "output_text_delta" && typeof data.delta === "string") {
+        if (data.delta.length > 0) {
+          if (!reasoningDone) {
+            reasoningDone = true;
+            yield { type: "reasoning_done" };
+          }
+          yield { type: "delta", text: data.delta };
+        }
+        continue;
+      }
+      if (data?.type === "model" && data.event) {
+        const ev = data.event;
+        if (
+          ev.type === "response.reasoning_summary_text.delta" &&
+          typeof ev.delta === "string"
+        ) {
+          if (ev.delta.length > 0) yield { type: "reasoning_delta", text: ev.delta };
+        } else if (
+          ev.type === "response.reasoning_summary_text.done" &&
+          !reasoningDone
+        ) {
+          reasoningDone = true;
+          yield { type: "reasoning_done" };
+        }
+      }
+    }
+    await streamed.completed;
+  } catch (err) {
+    yield {
+      type: "error",
+      message:
+        err instanceof Error ? err.message : "The model failed to respond.",
+    };
+  }
+}
+
+/**
+ * Non-streaming, tool-less completion — drains {@link streamCompletion} and
+ * returns the assembled text. Never throws; a failure is surfaced on `error`
+ * alongside whatever text was assembled. Used by the research planner and the
+ * per-source analysis steps.
+ */
+export async function runCompletion(
+  params: CompletionParams,
+): Promise<{ content: string; error?: string }> {
+  let content = "";
+  let error: string | undefined;
+  for await (const event of streamCompletion(params)) {
+    if (event.type === "delta") content += event.text;
+    else if (event.type === "error") error = event.message;
+  }
+  return { content, error };
 }

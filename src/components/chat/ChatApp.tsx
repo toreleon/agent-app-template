@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { X } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { FolderClosed, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Attachment } from "@/lib/types";
 import { useChatStore } from "@/store/chat";
+import { useProjectStore } from "@/store/projects";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
@@ -35,8 +36,12 @@ export function ChatApp({ conversationId }: ChatAppProps) {
   const [sidebarWidth, setSidebarWidth] = useState(260);
   const [artifactWidth, setArtifactWidth] = useState(560);
   const [draft, setDraft] = useState<string | undefined>();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedArtifactId = searchParams.get("artifact");
+  // A fresh chat can be scoped to a project via /?project=<id> (e.g. from the
+  // project page's "New chat" button); its context is injected server-side.
+  const requestedProjectId = searchParams.get("project");
 
   const messages = useChatStore((s) => s.messages);
   const isStreaming = useChatStore((s) => s.isStreaming);
@@ -45,6 +50,10 @@ export function ChatApp({ conversationId }: ChatAppProps) {
   const error = useChatStore((s) => s.error);
   const messagesLoading = useChatStore((s) => s.messagesLoading);
   const openArtifactId = useChatStore((s) => s.openArtifactId);
+  const activeProjectId = useChatStore((s) => s.activeProjectId);
+
+  const projects = useProjectStore((s) => s.projects);
+  const loadProjects = useProjectStore((s) => s.load);
 
   const setModel = useChatStore((s) => s.setModel);
   const sendMessage = useChatStore((s) => s.sendMessage);
@@ -56,10 +65,11 @@ export function ChatApp({ conversationId }: ChatAppProps) {
   const clearError = useChatStore((s) => s.clearError);
   const openArtifact = useChatStore((s) => s.openArtifact);
 
-  // Initial sidebar list.
+  // Initial sidebar list + projects (so the header chip can resolve a name).
   useEffect(() => {
     void loadConversations();
-  }, [loadConversations]);
+    void loadProjects();
+  }, [loadConversations, loadProjects]);
 
   // Load or reset the active conversation based on the route.
   useEffect(() => {
@@ -67,7 +77,9 @@ export function ChatApp({ conversationId }: ChatAppProps) {
 
     async function syncConversation() {
       if (!conversationId) {
-        newChat();
+        // Fresh chat — scope it to the requested project (if any) so the first
+        // message is created inside that project.
+        newChat(requestedProjectId);
         return;
       }
 
@@ -84,7 +96,20 @@ export function ChatApp({ conversationId }: ChatAppProps) {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, loadConversation, newChat, openArtifact, requestedArtifactId]);
+  }, [
+    conversationId,
+    loadConversation,
+    newChat,
+    openArtifact,
+    requestedArtifactId,
+    requestedProjectId,
+  ]);
+
+  // The project this chat belongs to (for the header chip), resolved by id.
+  const activeProject = useMemo(
+    () => projects.find((p) => p.id === activeProjectId) ?? null,
+    [projects, activeProjectId],
+  );
 
   // Keep the panes usable after a viewport resize or when an artifact is opened.
   useEffect(() => {
@@ -216,6 +241,21 @@ export function ChatApp({ conversationId }: ChatAppProps) {
             side="bottom"
             align="start"
           />
+          {activeProjectId && (
+            <button
+              type="button"
+              onClick={() => router.push(`/projects/${activeProjectId}`)}
+              title={
+                activeProject
+                  ? `Project: ${activeProject.name}`
+                  : "Open project"
+              }
+              className="inline-flex max-w-[220px] items-center gap-1.5 rounded-full border border-border bg-hover/50 px-3 py-1 text-xs font-medium text-text-secondary transition-colors hover:bg-hover hover:text-text-primary"
+            >
+              <FolderClosed size={13} className="shrink-0" />
+              <span className="truncate">{activeProject?.name ?? "Project"}</span>
+            </button>
+          )}
         </header>
 
         {error && (

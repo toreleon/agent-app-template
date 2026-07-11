@@ -782,3 +782,195 @@ at `/schedules`.
 Both an in-process 60s ticker (`SCHEDULER_ENABLED=1`, via instrumentation; needs a
 persistent Node server) and the `CRON_SECRET`-guarded `/api/cron` endpoint funnel into the
 **same** `runDueSchedules()`. The CAS claim above makes concurrent triggers safe.
+
+---
+
+## 11. Projects (ChatGPT/Claude-style workspaces — authoritative)
+
+A **Project** groups conversations around a shared purpose and carries **custom
+instructions** + **knowledge files** that are injected into the system prompt for
+**every chat in the project**. UI lives at `/projects` and `/projects/[id]`.
+
+### Data model (Prisma — additive; applied to dev.db via hand-written SQL, NOT
+`prisma db push`, because dev.db carries orphan tables a full push would drop)
+- `Project` — `id`, `userId`, `name`, `description?`, `instructions?`, `createdAt`,
+  `updatedAt`. Relations: `user`, `files` (`ProjectFile[]`), `conversations`
+  (`Conversation[]`). Index on `userId`.
+- `ProjectFile` — `id`, `projectId`, `name`, `type` (MIME), `size` (Int), `url`
+  (`/uploads/<stored>`), `content?` (extracted UTF-8 text; null when unsupported/
+  failed), `createdAt`. Real FK `onDelete: Cascade`. Index on `projectId`.
+- `Conversation.projectId` (String?) — new nullable column + `project` relation.
+  **Caveat (same as `scheduleId`):** SQLite has **NO enforced DB-level FK** on this
+  column, so `DELETE /api/projects/[id]` MUST cascade conversations **manually**.
+
+### DTOs (from `@/lib/types`)
+`ProjectSummary` (`+conversationCount/fileCount`), `ProjectFileInfo`
+(`hasContent` = text was extracted), `ProjectDetail` (`+files[] +conversations[]`),
+`CreateProjectRequest`, `UpdateProjectRequest` (partial; `description`/`instructions`
+accept string OR null-to-clear), `UploadProjectFilesResponse`. Consts
+`MAX_PROJECT_FILES = 20`, `MAX_PROJECT_KNOWLEDGE_CHARS = 100_000`.
+`ConversationSummary` gained `projectId: string | null`; `CreateConversationRequest`
+and `ChatRequest` gained optional `projectId`; `UpdateConversationRequest` is now
+`{ title?; projectId?: string | null }` (rename and/or move; ≥1 field required).
+
+### Serializers / helpers
+- `@/lib/conversations` → `toConversationSummary(row)`.
+- `@/lib/projects/dto` → `toProjectSummary`, `toProjectDetail`, `toProjectFileInfo`.
+- `@/lib/projects/prompt` → `composeProjectContext(project)` (pure; null when nothing
+  to inject; caps knowledge at `MAX_PROJECT_KNOWLEDGE_CHARS`) and
+  `loadProjectContext(prisma, projectId)` (never throws → null).
+- `@/lib/projects/extract` → `extractProjectFileText(filePath, mime)` (text/* + PDF via
+  `unpdf`; null otherwise; cap `MAX_EXTRACTED_CHARS = 200_000`).
+
+### Prompt injection (the point of the feature)
+`StreamChatParams.projectContext?: string` is appended after the base `INSTRUCTIONS`
+in `@/lib/agent`. `POST /api/chat` resolves the conversation's `projectId`, calls
+`loadProjectContext`, and forwards it. Non-project chats get no extra context.
+New chats attach to a project via `ChatRequest.projectId` (server validates ownership;
+unknown/unowned id ignored). Scheduled-run chats have no project.
+
+### API routes (all `runtime="nodejs"`; auth required; ownership → 404, never 403)
+- `GET /api/projects` → `ProjectSummary[]` (this user's, newest first, `_count`).
+- `POST /api/projects` → **201** `ProjectSummary`. `name` required (400 empty).
+- `GET /api/projects/[id]` → `ProjectDetail` (files newest-first, member chats).
+- `PATCH /api/projects/[id]` → `ProjectSummary` (edit-in-place; ≥1 field).
+- `DELETE /api/projects/[id]` → `{ success: true }`. Order: capture file urls →
+  `conversation.deleteMany({ projectId, userId })` (chats+messages+artifacts cascade
+  via real FKs) → `project.delete` (ProjectFile rows cascade) → best-effort `unlink`
+  the on-disk uploads. **Deleting a project deletes its chats** (matches ChatGPT/Claude).
+- `POST /api/projects/[id]/files` (multipart `files`) → **200** `UploadProjectFilesResponse`.
+  Reuses `@/lib/storage` (`validateFile`/`saveFiles`), enforces `MAX_PROJECT_FILES`,
+  extracts text per file. `GET` lists them. `DELETE …/files/[fileId]` removes one
+  (row + best-effort disk unlink).
+- Conversation move: `PATCH /api/conversations/[id]` with `{ projectId: "<id>" | null }`
+  (validates target ownership → 404).
+
+### Client
+- `@/store/projects` (`useProjectStore`): list + open `detail`, `load/loadDetail`
+  (out-of-order-safe via a request token), `create/update/remove`, `uploadFiles/removeFile`.
+- `@/store/chat`: `activeProjectId`, `newChat(projectId?)`, `moveConversationToProject`
+  (reverts list **and** `activeProjectId` on failure; refreshes project counts on success);
+  `sendMessage` seeds `projectId` only for brand-new conversations.
+- UI: Sidebar Projects nav + recent-projects list + "Move to project" dialog; `/projects`
+  grid + create modal (`ProjectForm`); `/projects/[id]` detail (`ProjectDetail`: editable
+  instructions, knowledge upload/list, member chats, "New chat" → `/?project=<id>`);
+  ChatApp reads `?project=` and shows a project chip.
+
+### Upload security (shared `@/lib/storage`)
+The stored on-disk extension is derived from the **validated MIME type**
+(`MIME_TO_EXTENSION`), never the untrusted filename — an allowlisted type can never be
+written with an active-content extension (`.html`/`.svg`), closing a same-origin stored-XSS
+vector (`/uploads` is public). Applies to all upload paths (attachments + project files).
+
+---
+
+## 12. Deep Research (authoritative)
+
+ChatGPT-style **Deep Research**: a composer toggle runs a two-phase research flow that streams a
+**cited report inline** as the assistant message's content, beneath a live **Research** activity panel.
+It reuses the existing SSE stream, the `web_search`/`web_fetch` tools (SSRF-guarded), and the reasoning
+plumbing (§9). Depth is fixed **"Standard"**: ~4 subtopics × ~3 sources ≈ ~12 page reads. No depth picker.
+
+### Request flag (from `@/lib/types` — Foundation, already exists)
+`ChatRequest` gains an optional `deepResearch` flag:
+```ts
+interface ChatRequest {
+  conversationId?: string; message: string; model: string;
+  attachments?: Attachment[]; effort?: ReasoningEffort;
+  deepResearch?: boolean; // ← turns this turn into a Deep Research run
+}
+```
+
+### Stream events + state types (from `@/lib/types` — Foundation, already exists)
+`StreamEvent` gains two variants alongside the existing ones (§5):
+```ts
+type StreamEvent =
+  | /* ...existing delta / reasoning_* / tool_* / message_id / title / done / error... */
+  | { type: "research_plan"; plan: ResearchPlan }
+  | { type: "research_activity"; activity: ResearchActivity };
+
+type ResearchPhase = "clarifying" | "researching" | "report";
+interface ResearchPlan { title: string; subtopics: { title: string; queries: string[] }[]; }
+
+type ResearchActivityKind = "search" | "source" | "analyze" | "synthesize";
+type ResearchActivityStatus = "active" | "done" | "failed";
+interface ResearchActivity {
+  id: string; kind: ResearchActivityKind; title: string; url?: string;
+  status: ResearchActivityStatus;
+}
+
+interface ResearchState {
+  phase: ResearchPhase; brief?: string; plan?: ResearchPlan;
+  activities?: ResearchActivity[]; sourceCount?: number;
+}
+```
+`ChatMessage` gains `research?: ResearchState` (assistant only). The client accumulates the
+`research_plan` + `research_activity` events into it and renders the collapsible **Research** panel
+above the report; the panel and report survive reloads via the persisted column below.
+
+### Data model (Prisma — Foundation, fixed; do NOT edit the schema)
+- `Message.research` (`String?`) — nullable JSON-encoded `ResearchState`. Persist with
+  `JSON.stringify(state)` (or `null` when absent); decode straight to `ChatMessage.research`
+  (or `undefined` when null), same serialization rule as `attachments`/`toolCalls` (§7).
+
+### Route logic — `POST /api/chat` with `deepResearch: true` (Agent C)
+When the request body carries `deepResearch: true`, the route runs a **two-phase** branch instead of
+`streamChat(...)`. Framing (`message_id` / `title` / `done` / `X-Conversation-Id`), persistence, and
+`effort` handling are unchanged (§4); only the event source differs, and the route still owns all
+framing events (the orchestrator never yields `message_id` / `title` / `done`):
+
+1. **Clarify (first Deep-Research turn).** If this is the first Deep-Research turn in the conversation
+   (no prior research answers), stream **`streamClarifyingQuestions(...)`** — 2–3 concise clarifying
+   questions as an ordinary assistant `delta` message. Persist it like any assistant turn; do NOT run
+   research yet. The assistant `Message.research.phase` is `"clarifying"`.
+2. **Research + report (next turn).** On the following turn — the user's answers — build a `brief` from
+   the original query + answers and stream **`streamDeepResearch(...)`**: one `research_plan`, then many
+   `research_activity` events (searches, per-source reads, an analyze step, a synthesize step), then the
+   `reasoning_*` + `delta` report. The route accumulates the plan/activities/deltas into the final
+   `ResearchState` and persists it on `Message.research`.
+
+### Orchestrator API — `@/lib/research/orchestrator` (to build)
+Both functions return `AsyncIterable<StreamEvent>` and **never throw** — they yield an `error` event on
+failure:
+```ts
+import type { ChatMessage, StreamEvent, ReasoningEffort } from "@/lib/types";
+
+/** First turn: stream 2–3 concise clarifying questions (a short numbered markdown list) as `delta`
+ *  (+ optional reasoning_*). Never throws. */
+export function streamClarifyingQuestions(p: {
+  query: string; history: ChatMessage[]; model: string; effort?: ReasoningEffort;
+}): AsyncIterable<StreamEvent>;
+
+/** Full pipeline. Yields (in order): one `research_plan`; many `research_activity` (search
+ *  started/finished, each source reading/read/failed, an analyze step, a synthesize step); then
+ *  `reasoning_*` + `delta` for the streamed cited report. Runs ~12 web_search/web_fetch reads.
+ *  Never throws. */
+export function streamDeepResearch(p: {
+  brief: string; model: string; effort?: ReasoningEffort;
+  userId: string; conversationId: string;
+}): AsyncIterable<StreamEvent>;
+```
+
+### Agent primitives — `@/lib/agent` (Foundation, already exists)
+Tool-less LLM helpers the orchestrator builds on (separate from `streamChat` / `runChatCompletion`):
+```ts
+interface CompletionParams { system: string; user: string; model: string; effort?: ReasoningEffort; }
+
+/** Streamed, tool-less completion — yields reasoning_delta / reasoning_done / delta / error.
+ *  Use for the STREAMED final report. */
+export function streamCompletion(p: CompletionParams): AsyncIterable<StreamEvent>;
+
+/** Non-streaming, tool-less completion; never throws. Use for planning + per-source analysis. */
+export function runCompletion(p: CompletionParams): Promise<{ content: string; error?: string }>;
+```
+
+### Web-tool call convention (Foundation — `web_search` / `web_fetch`)
+The orchestrator invokes the web tools **programmatically**, not via the Agent loop:
+`tool.invoke({}, JSON.stringify(args))` returns a JSON **string** to `JSON.parse`.
+- `web_search` args `{ query, count, allowed_domains: null, blocked_domains: null }` →
+  `{ ok: true, query, provider, results: { title, url, snippet }[], note? } | { ok: false, error }`.
+- `web_fetch` args `{ url, prompt: null, maxChars, format: "markdown" | null }` →
+  `{ ok: true, url, title?, content /* <web_content untrusted="true"> wrapped */, truncated, ... } | { ok: false, error, code }`.
+
+Fetched `content` is **untrusted** page text — analysis prompts must treat it as data, never
+instructions (same posture as the web tools in the README **Security posture** note).

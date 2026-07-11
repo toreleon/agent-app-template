@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
   Boxes,
   CalendarClock,
   Check,
+  FolderClosed,
+  FolderKanban,
   LogOut,
   MoreHorizontal,
   PanelLeft,
@@ -17,10 +19,12 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import type { ConversationSummary } from "@/lib/types";
+import type { ConversationSummary, ProjectSummary } from "@/lib/types";
 import { useChatStore } from "@/store/chat";
+import { useProjectStore } from "@/store/projects";
 import { IconButton } from "@/components/ui/IconButton";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
+import { Modal } from "@/components/ui/Modal";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { cn } from "@/components/ui/cn";
 
@@ -72,11 +76,26 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
   const newChat = useChatStore((s) => s.newChat);
   const renameConversation = useChatStore((s) => s.renameConversation);
   const deleteConversation = useChatStore((s) => s.deleteConversation);
+  const moveConversationToProject = useChatStore(
+    (s) => s.moveConversationToProject,
+  );
+
+  const projects = useProjectStore((s) => s.projects);
+  const loadProjects = useProjectStore((s) => s.load);
 
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  /** Conversation currently targeted by the "Move to project" dialog. */
+  const [moveTarget, setMoveTarget] = useState<ConversationSummary | null>(null);
+
+  // The Projects section is populated from the shared project store; load it
+  // once so the sidebar shows projects on any page (chat, schedules, …).
+  useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -97,6 +116,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
   const schedulesActive = pathname === "/schedules";
   const artifactsActive = pathname === "/artifacts";
+  const projectsActive = pathname === "/projects" || pathname.startsWith("/projects/");
 
   function beginRename(c: ConversationSummary) {
     setEditingId(c.id);
@@ -125,6 +145,13 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
             <PenSquare size={20} />
           </IconButton>
           <IconButton
+            label="Projects"
+            active={projectsActive}
+            onClick={() => router.push("/projects")}
+          >
+            <FolderKanban size={20} />
+          </IconButton>
+          <IconButton
             label="Artifacts"
             active={artifactsActive}
             onClick={() => router.push("/artifacts")}
@@ -150,13 +177,34 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
         <IconButton label="Close sidebar" onClick={onToggle}>
           <PanelLeft size={20} />
         </IconButton>
-        <IconButton label="New chat" onClick={handleNewChat}>
-          <PenSquare size={20} />
+        <IconButton label="Search chats" onClick={() => setSearchOpen(true)}>
+          <Search size={20} />
         </IconButton>
       </div>
 
-      {/* Scheduled nav */}
+      {/* Primary nav */}
       <div className="flex flex-col gap-0.5 px-2.5">
+        <button
+          type="button"
+          onClick={handleNewChat}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-medium text-text-primary transition-colors hover:bg-hover"
+        >
+          <PenSquare size={18} />
+          New chat
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push("/projects")}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors",
+            projectsActive
+              ? "bg-hover text-text-primary"
+              : "text-text-primary hover:bg-hover",
+          )}
+        >
+          <FolderKanban size={18} />
+          Projects
+        </button>
         <button
           type="button"
           onClick={() => router.push("/schedules")}
@@ -185,28 +233,34 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
         </button>
       </div>
 
-      {/* Search */}
-      <div className="px-2.5 pb-2 pt-1">
-        <div className="flex items-center gap-2 rounded-lg bg-hover/60 px-2.5 py-2">
-          <Search size={16} className="text-text-secondary" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search chats"
-            className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-secondary focus:outline-none"
-          />
-          {query && (
-            <button
-              type="button"
-              aria-label="Clear search"
-              onClick={() => setQuery("")}
-              className="text-text-secondary hover:text-text-primary"
-            >
-              <X size={14} />
-            </button>
-          )}
+      {/* Recent projects (up to 5) — quick access to project workspaces. */}
+      {projects.length > 0 && (
+        <div className="mt-1 flex flex-col gap-0.5 px-2.5">
+          <div className="px-2 pb-1 pt-2 text-xs font-medium text-text-secondary">
+            Projects
+          </div>
+          {projects.slice(0, 5).map((p) => {
+            const active = pathname === `/projects/${p.id}`;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => router.push(`/projects/${p.id}`)}
+                title={p.name}
+                className={cn(
+                  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+                  active
+                    ? "bg-hover text-text-primary"
+                    : "text-text-primary hover:bg-hover",
+                )}
+              >
+                <FolderClosed size={16} className="shrink-0 text-text-secondary" />
+                <span className="min-w-0 flex-1 truncate text-left">{p.name}</span>
+              </button>
+            );
+          })}
         </div>
-      </div>
+      )}
 
       {/* Conversation list */}
       <nav className="flex-1 overflow-y-auto px-2.5 pb-2">
@@ -293,6 +347,14 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                                     <Pencil size={15} /> Rename
                                   </DropdownItem>
                                   <DropdownItem
+                                    onClick={() => {
+                                      setMoveTarget(c);
+                                      close();
+                                    }}
+                                  >
+                                    <FolderClosed size={15} /> Move to project
+                                  </DropdownItem>
+                                  <DropdownItem
                                     danger
                                     onClick={() => {
                                       void deleteConversation(c.id);
@@ -362,7 +424,145 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
       </div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
+      <Modal
+        open={searchOpen}
+        onClose={() => {
+          setSearchOpen(false);
+          setQuery("");
+        }}
+        title="Search chats"
+        className="max-w-lg"
+      >
+        <div className="p-3">
+          <div className="flex items-center gap-2 rounded-lg bg-hover/60 px-2.5 py-2">
+            <Search size={16} className="text-text-secondary" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search chats"
+              className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-secondary focus:outline-none"
+            />
+            {query && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setQuery("")}
+                className="text-text-secondary hover:text-text-primary"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <div className="mt-2 max-h-80 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="px-2 py-6 text-center text-sm text-text-secondary">
+                No matching chats
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-0.5">
+                {filtered.map((conversation) => (
+                  <li key={conversation.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openConversation(conversation.id);
+                        setSearchOpen(false);
+                        setQuery("");
+                      }}
+                      className="w-full truncate rounded-lg px-3 py-2.5 text-left text-sm text-text-primary transition-colors hover:bg-hover"
+                    >
+                      {conversation.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      <MoveToProjectModal
+        conversation={moveTarget}
+        projects={projects}
+        onClose={() => setMoveTarget(null)}
+        onMove={(projectId) => {
+          if (moveTarget) void moveConversationToProject(moveTarget.id, projectId);
+          setMoveTarget(null);
+        }}
+      />
     </div>
+  );
+}
+
+/**
+ * Modal for moving a conversation into one of the user's projects, or removing
+ * it from its current project. The Dropdown primitive has no nested submenu, so
+ * project selection lives in this small dialog instead.
+ */
+function MoveToProjectModal({
+  conversation,
+  projects,
+  onClose,
+  onMove,
+}: {
+  conversation: ConversationSummary | null;
+  projects: ProjectSummary[];
+  onClose: () => void;
+  onMove: (projectId: string | null) => void;
+}) {
+  const currentProjectId = conversation?.projectId ?? null;
+  return (
+    <Modal
+      open={!!conversation}
+      onClose={onClose}
+      title="Move to project"
+      className="max-w-md"
+    >
+      <div className="flex flex-col gap-1 p-3">
+        <button
+          type="button"
+          onClick={() => onMove(null)}
+          className={cn(
+            "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-hover",
+            currentProjectId === null ? "text-text-primary" : "text-text-secondary",
+          )}
+        >
+          <span className="flex items-center gap-2.5">
+            <X size={16} /> No project
+          </span>
+          {currentProjectId === null && <Check size={16} />}
+        </button>
+
+        {projects.length === 0 ? (
+          <p className="px-3 py-4 text-center text-xs text-text-secondary">
+            You don&apos;t have any projects yet.
+          </p>
+        ) : (
+          projects.map((p) => {
+            const selected = p.id === currentProjectId;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onMove(p.id)}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-hover",
+                  selected ? "text-text-primary" : "text-text-primary",
+                )}
+              >
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <FolderClosed size={16} className="shrink-0 text-text-secondary" />
+                  <span className="min-w-0 truncate">{p.name}</span>
+                </span>
+                {selected && <Check size={16} className="shrink-0" />}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </Modal>
   );
 }
 

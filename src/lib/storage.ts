@@ -52,6 +52,53 @@ export const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
   "text/xml",
 ]);
 
+/**
+ * Canonical on-disk extension for each allowed MIME type. The STORED filename's
+ * extension is derived from the *validated* MIME (below) rather than the
+ * untrusted original filename, so an attacker cannot smuggle an active-content
+ * extension (e.g. name="x.html", type="text/plain") past the allowlist and have
+ * it served as executable HTML/SVG from the same origin (/uploads is public).
+ * Every key here MUST be present in ALLOWED_MIME_TYPES; text/html and
+ * image/svg+xml are intentionally absent (rejected upstream), so no allowed
+ * upload can ever be written with a navigable/active extension.
+ */
+const MIME_TO_EXTENSION: ReadonlyMap<string, string> = new Map([
+  ["image/png", ".png"],
+  ["image/jpeg", ".jpg"],
+  ["image/jpg", ".jpg"],
+  ["image/gif", ".gif"],
+  ["image/webp", ".webp"],
+  ["image/bmp", ".bmp"],
+  ["image/tiff", ".tiff"],
+  ["image/heic", ".heic"],
+  ["image/heif", ".heif"],
+  ["application/pdf", ".pdf"],
+  ["application/msword", ".doc"],
+  [
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".docx",
+  ],
+  ["application/vnd.ms-excel", ".xls"],
+  [
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xlsx",
+  ],
+  ["application/vnd.ms-powerpoint", ".ppt"],
+  [
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".pptx",
+  ],
+  ["application/rtf", ".rtf"],
+  ["application/json", ".json"],
+  ["application/xml", ".xml"],
+  ["application/zip", ".zip"],
+  ["application/x-zip-compressed", ".zip"],
+  ["text/plain", ".txt"],
+  ["text/markdown", ".md"],
+  ["text/csv", ".csv"],
+  ["text/xml", ".xml"],
+]);
+
 /** Absolute path to the directory uploaded files are written to. */
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 
@@ -112,7 +159,10 @@ export async function saveFile(file: File): Promise<Attachment> {
   validateFile(file);
   await ensureUploadDir();
 
-  const ext = extractExtension(file.name);
+  // The stored extension is a function of the VALIDATED MIME type, never the
+  // untrusted original filename — see MIME_TO_EXTENSION. (`.bin` is unreachable
+  // in practice: validateFile has already rejected any type not in the map.)
+  const ext = MIME_TO_EXTENSION.get((file.type || "").toLowerCase()) ?? ".bin";
   const storedName = `${nanoid()}${ext}`;
   const destPath = path.join(UPLOAD_DIR, storedName);
 

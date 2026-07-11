@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
+import { toConversationSummary } from "@/lib/conversations";
 import {
   DEFAULT_MODEL,
   MODELS,
@@ -11,8 +12,11 @@ import {
 
 export const runtime = "nodejs";
 
-/** GET /api/conversations — list the current user's conversations, newest first. */
-export async function GET() {
+/**
+ * GET /api/conversations — list the current user's conversations, newest first.
+ * Optional `?projectId=<id>` filters to a single project's conversations.
+ */
+export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return Response.json({ error: "Unauthorized" } satisfies ApiError, {
@@ -21,18 +25,21 @@ export async function GET() {
   }
   const userId = session.user.id;
 
+  const projectId = new URL(req.url).searchParams.get("projectId");
+
   const conversations = await prisma.conversation.findMany({
-    where: { userId },
+    where: { userId, ...(projectId ? { projectId } : {}) },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, title: true, model: true, updatedAt: true },
+    select: {
+      id: true,
+      title: true,
+      model: true,
+      projectId: true,
+      updatedAt: true,
+    },
   });
 
-  const result: ConversationSummary[] = conversations.map((c) => ({
-    id: c.id,
-    title: c.title,
-    model: c.model,
-    updatedAt: c.updatedAt.toISOString(),
-  }));
+  const result: ConversationSummary[] = conversations.map(toConversationSummary);
 
   return Response.json(result);
 }
@@ -67,17 +74,29 @@ export async function POST(req: Request) {
       ? body.model
       : DEFAULT_MODEL;
 
+  // Optional project membership — only honored when the project is owned by the
+  // user; an unknown/unowned id is ignored (conversation created without one).
+  let projectId: string | null = null;
+  if (typeof body.projectId === "string" && body.projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: body.projectId, userId },
+      select: { id: true },
+    });
+    projectId = project?.id ?? null;
+  }
+
   const created = await prisma.conversation.create({
-    data: { title, model, userId },
-    select: { id: true, title: true, model: true, updatedAt: true },
+    data: { title, model, userId, projectId },
+    select: {
+      id: true,
+      title: true,
+      model: true,
+      projectId: true,
+      updatedAt: true,
+    },
   });
 
-  const summary: ConversationSummary = {
-    id: created.id,
-    title: created.title,
-    model: created.model,
-    updatedAt: created.updatedAt.toISOString(),
-  };
+  const summary: ConversationSummary = toConversationSummary(created);
 
   return Response.json(summary, { status: 201 });
 }

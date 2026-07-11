@@ -9,12 +9,15 @@ import type {
   ChatMessage,
   ConversationDetail,
   ConversationSummary,
+  ResearchPhase,
+  ResearchState,
   StreamEvent,
   ToolCallRecord,
 } from "@/lib/types";
 import { DEFAULT_MODEL, DEFAULT_EFFORT } from "@/lib/types";
 import type { ReasoningEffort } from "@/lib/types";
 import { parseSSE } from "@/lib/sse";
+import { useProjectStore } from "@/store/projects";
 
 /**
  * Client-only augmentation of ChatMessage used while streaming the reasoning
@@ -50,6 +53,17 @@ export interface ChatState {
   model: string;
   /** Reasoning effort applied to the next turn (see REASONING_EFFORTS). */
   effort: ReasoningEffort;
+  /**
+   * When true, the next turn runs the Deep Research pipeline (clarifying
+   * questions on the first turn, full research + report on the next).
+   */
+  deepResearch: boolean;
+  /**
+   * The project the current (or next new) chat belongs to. Drives the server's
+   * system-prompt injection for new chats and the project chip in the header.
+   * Null when the chat is not in a project.
+   */
+  activeProjectId: string | null;
 
   // ---- artifacts ----
   /** All artifacts in the current conversation, each with full version history. */
@@ -70,9 +84,16 @@ export interface ChatState {
   // ---- actions ----
   setModel: (model: string) => void;
   setEffort: (effort: ReasoningEffort) => void;
+  setDeepResearch: (v: boolean) => void;
   loadConversations: () => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
-  newChat: () => void;
+  /** Reset to a fresh chat, optionally scoped to a project. */
+  newChat: (projectId?: string | null) => void;
+  /** Move a conversation into a project (id) or out of one (null). */
+  moveConversationToProject: (
+    id: string,
+    projectId: string | null,
+  ) => Promise<void>;
   /** Open an artifact in the side panel (optionally at a specific version). */
   openArtifact: (artifactId: string, version?: number) => void;
   /** Close the artifact side panel. */
@@ -100,6 +121,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   model: DEFAULT_MODEL,
   effort: DEFAULT_EFFORT,
+  deepResearch: false,
+  activeProjectId: null,
 
   artifacts: [],
   openArtifactId: null,
@@ -114,6 +137,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setModel: (model) => set({ model }),
 
   setEffort: (effort) => set({ effort }),
+
+  setDeepResearch: (deepResearch) => set({ deepResearch }),
 
   clearError: () => set({ error: null }),
 
@@ -154,6 +179,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: data.messages,
         model: data.model || get().model,
         artifacts: data.artifacts ?? [],
+        activeProjectId: data.projectId ?? null,
       });
     } catch (e) {
       set({ error: e instanceof Error ? e.message : "Failed to load conversation" });
@@ -162,7 +188,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  newChat: () => {
+  newChat: (projectId) => {
     if (get().isStreaming) get().stop();
     set({
       currentId: null,
@@ -171,7 +197,48 @@ export const useChatStore = create<ChatState>((set, get) => ({
       artifacts: [],
       openArtifactId: null,
       openArtifactVersion: null,
+      activeProjectId: projectId ?? null,
+      // Deep Research is per-request, not a persistent conversation mode — don't
+      // leak it into a fresh chat (which would silently start the clarify flow).
+      deepResearch: false,
     });
+  },
+
+  moveConversationToProject: async (id, projectId) => {
+    const prev = get().conversations;
+    const prevActiveProjectId = get().activeProjectId;
+    // Optimistically update the sidebar entry.
+    set({
+      conversations: prev.map((c) => (c.id === id ? { ...c, projectId } : c)),
+      activeProjectId: get().currentId === id ? projectId : get().activeProjectId,
+    });
+    try {
+      const res = await fetch(`/api/conversations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+      if (!res.ok) throw new Error("Failed to move conversation");
+      const updated = (await res.json()) as ConversationSummary;
+      set((s) => ({
+        conversations: s.conversations.map((c) => (c.id === id ? updated : c)),
+      }));
+      // A move changes both projects' conversation counts; refresh the project
+      // store so any open list/detail reflects the new membership.
+      const projectStore = useProjectStore.getState();
+      void projectStore.load();
+      const openDetailId = projectStore.detail?.id;
+      if (openDetailId) void projectStore.loadDetail(openDetailId);
+    } catch (e) {
+      // Revert BOTH the list and the active project (the header chip) so a
+      // failed move never leaves the UI pointing at a project the chat was
+      // never moved into.
+      set({
+        conversations: prev,
+        activeProjectId: prevActiveProjectId,
+        error: e instanceof Error ? e.message : "Failed to move conversation",
+      });
+    }
   },
 
   openArtifact: (artifactId, version) => {
@@ -196,6 +263,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const conversationId = options?.conversationId ?? get().currentId ?? undefined;
     const model = get().model;
     const effort = get().effort;
+    const deepResearch = get().deepResearch;
+    // Only seed a project on brand-new conversations; existing chats keep the
+    // project they were created with (the server ignores it for existing ids).
+    const projectId = conversationId ? undefined : get().activeProjectId ?? undefined;
 
     const userMessage: ChatMessage = {
       id: tempId(),
@@ -235,6 +306,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           message: trimmed,
           model,
           effort,
+          deepResearch,
+          projectId,
           attachments: attachments.length ? attachments : undefined,
         }),
         signal: abortController.signal,
@@ -530,6 +603,44 @@ function applyEvent(
       });
       break;
     }
+    case "research_plan": {
+      const id = assistantIdRef.current ?? assistantId;
+      set((s) => ({
+        messages: s.messages.map((m) => {
+          if (m.id !== id) return m;
+          const prev = m.research ?? { phase: "researching" as ResearchPhase };
+          const research: ResearchState = {
+            ...prev,
+            phase: prev.phase === "report" ? "report" : "researching",
+            plan: event.plan,
+          };
+          return { ...m, research };
+        }),
+      }));
+      break;
+    }
+    case "research_activity": {
+      const id = assistantIdRef.current ?? assistantId;
+      set((s) => ({
+        messages: s.messages.map((m) => {
+          if (m.id !== id) return m;
+          const prev: ResearchState = m.research ?? {
+            phase: "researching",
+            activities: [],
+          };
+          const activities = prev.activities ? [...prev.activities] : [];
+          const idx = activities.findIndex((a) => a.id === event.activity.id);
+          if (idx === -1) {
+            activities.push(event.activity);
+          } else {
+            activities[idx] = event.activity;
+          }
+          const research: ResearchState = { ...prev, activities };
+          return { ...m, research };
+        }),
+      }));
+      break;
+    }
     case "title": {
       set((s) => {
         const cid = s.currentId;
@@ -546,14 +657,32 @@ function applyEvent(
       }));
       break;
     }
-    case "done":
+    case "done": {
+      const id = assistantIdRef.current ?? assistantId;
       // Defensive: if reasoning was streaming but never explicitly finished,
       // collapse it now so the Thinking block doesn't stay in the live state.
       if (!reasoningDoneRef.current && reasoningStartRef.current !== null) {
-        finishReasoning(assistantIdRef.current ?? assistantId, set);
+        finishReasoning(id, set);
       }
+      // Deep Research is per-request: when a REPORT turn finishes (its message
+      // carries a plan), stamp phase "report" and clear the mode so the next
+      // message is a normal chat turn. A CLARIFY turn (no plan) keeps the mode on
+      // so the user's next message (their answers) runs the research.
+      set((s) => {
+        const msg = s.messages.find((m) => m.id === id);
+        if (!msg?.research?.plan) return {};
+        return {
+          deepResearch: false,
+          messages: s.messages.map((m) =>
+            m.id === id && m.research
+              ? { ...m, research: { ...m.research, phase: "report" as const } }
+              : m,
+          ),
+        };
+      });
       assistantIdRef.current = null;
       break;
+    }
   }
 }
 

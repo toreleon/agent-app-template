@@ -55,8 +55,58 @@ export interface ChatMessage {
    * the message produced no artifacts.
    */
   artifactRefs?: ArtifactRef[];
+  /**
+   * Deep-research state (assistant messages produced in Deep Research mode).
+   * Holds the plan + live activity log rendered in the collapsible "Research"
+   * block above the report. The report itself is this message's `content`.
+   * Absent for normal chat turns.
+   */
+  research?: ResearchState;
   /** ISO 8601 timestamp. */
   createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Deep Research
+// ---------------------------------------------------------------------------
+
+/** Which stage of a Deep Research exchange an assistant message represents. */
+export type ResearchPhase = "clarifying" | "researching" | "report";
+
+/** The research plan produced before searching begins. */
+export interface ResearchPlan {
+  /** A concise topic/title for the report. */
+  title: string;
+  /** The angles the research investigates; each drives one or more searches. */
+  subtopics: { title: string; queries: string[] }[];
+}
+
+export type ResearchActivityKind = "search" | "source" | "analyze" | "synthesize";
+export type ResearchActivityStatus = "active" | "done" | "failed";
+
+/** One line in the live research activity log. Streamed updates REPLACE the
+ * entry with the same `id` (a search that finishes, a source that finishes
+ * reading), so the id must be stable across its lifecycle. */
+export interface ResearchActivity {
+  id: string;
+  kind: ResearchActivityKind;
+  /** Human-readable label: a search query, a page title, or a phase name. */
+  title: string;
+  /** For `source` activities: the page URL (used to render a link/favicon). */
+  url?: string;
+  status: ResearchActivityStatus;
+}
+
+/** Accumulated Deep Research state, persisted (JSON) on the assistant message. */
+export interface ResearchState {
+  phase: ResearchPhase;
+  /** The research brief (original query + any clarification answers). */
+  brief?: string;
+  plan?: ResearchPlan;
+  /** The activity log, in emission order. */
+  activities?: ResearchActivity[];
+  /** Count of sources successfully read (for the collapsed summary line). */
+  sourceCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +118,8 @@ export interface ConversationSummary {
   id: string;
   title: string;
   model: string;
+  /** Owning project id, or null when the conversation is not in a project. */
+  projectId: string | null;
   /** ISO 8601 timestamp. */
   updatedAt: string;
 }
@@ -193,6 +245,14 @@ export type StreamEvent =
    * client can open or refresh the artifact panel live. See CONTRACTS.md.
    */
   | { type: "artifact"; command: ArtifactCommand; artifact: ArtifactSnapshot }
+  /** Deep Research: the plan, emitted once after planning completes. */
+  | { type: "research_plan"; plan: ResearchPlan }
+  /**
+   * Deep Research: a live activity-log entry (a search started/finished, a
+   * source being read, an analysis/synthesis step). An entry with an existing
+   * `activity.id` REPLACES the prior one; a new id appends.
+   */
+  | { type: "research_activity"; activity: ResearchActivity }
   | { type: "done" }
   | { type: "error"; message: string };
 
@@ -210,6 +270,21 @@ export interface ChatRequest {
   model: string;
   /** Optional attachments uploaded via POST /api/upload. */
   attachments?: Attachment[];
+  /**
+   * When true, this turn runs in Deep Research mode: the server plans, runs many
+   * web searches + page fetches, and synthesizes a long cited report — first
+   * asking clarifying questions, then (on the follow-up turn) producing the
+   * report. Streams `research_plan` / `research_activity` events alongside the
+   * report `delta`s. Defaults to false (normal chat).
+   */
+  deepResearch?: boolean;
+  /**
+   * When starting a NEW conversation (no `conversationId`), the project to create
+   * it in. Must be owned by the user; an unknown/unowned id is ignored (the chat
+   * is created without a project). Ignored when appending to an existing
+   * conversation — its project membership is fixed at creation.
+   */
+  projectId?: string;
   /**
    * Reasoning effort for this turn. Flows ChatRequest.effort -> streamChat ->
    * Agent modelSettings.providerData.reasoning. Defaults to DEFAULT_EFFORT when
@@ -231,11 +306,18 @@ export interface CreateConversationRequest {
   title?: string;
   /** Model id; defaults to DEFAULT_MODEL. */
   model?: string;
+  /** Optional project to create the conversation in (must be owned by the user). */
+  projectId?: string;
 }
 
-/** Request body for PATCH /api/conversations/[id]. */
+/**
+ * Request body for PATCH /api/conversations/[id]. All fields optional; at least
+ * one must be provided. `title` renames; `projectId` moves the conversation into
+ * a project (a project id) or removes it from its project (explicit `null`).
+ */
 export interface UpdateConversationRequest {
-  title: string;
+  title?: string;
+  projectId?: string | null;
 }
 
 /** Response body for POST /api/upload. */
@@ -591,3 +673,90 @@ export interface CronTriggerResult {
   /** ISO 8601 timestamp the tick ran at. */
   at: string;
 }
+
+// ---------------------------------------------------------------------------
+// Projects (ChatGPT/Claude-style workspaces)
+// ---------------------------------------------------------------------------
+
+/**
+ * A Project groups conversations around a shared purpose. Its custom
+ * `instructions` and attached knowledge files are injected into the system
+ * prompt for every chat in the project.
+ */
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  /** Optional short summary shown on the project card; null when unset. */
+  description: string | null;
+  /** Custom instructions injected into every chat's system prompt; null when unset. */
+  instructions: string | null;
+  /** Number of conversations currently in this project. */
+  conversationCount: number;
+  /** Number of knowledge files attached to this project. */
+  fileCount: number;
+  /** ISO 8601 timestamp. */
+  createdAt: string;
+  /** ISO 8601 timestamp. */
+  updatedAt: string;
+}
+
+/** One knowledge file attached to a project, as returned over the API. */
+export interface ProjectFileInfo {
+  id: string;
+  /** Original filename. */
+  name: string;
+  /** MIME type. */
+  type: string;
+  /** Size in bytes. */
+  size: number;
+  /** Public URL to fetch the raw file (e.g. "/uploads/<id>.pdf"). */
+  url: string;
+  /**
+   * True when readable text was extracted from the file and is therefore fed to
+   * the model as knowledge. False when the type is unsupported or extraction
+   * failed — the file is still listed but not part of the prompt context.
+   */
+  hasContent: boolean;
+  /** ISO 8601 timestamp. */
+  createdAt: string;
+}
+
+/** A project plus its knowledge files and member conversations. */
+export interface ProjectDetail extends ProjectSummary {
+  /** Knowledge files attached to the project, newest first. */
+  files: ProjectFileInfo[];
+  /** Conversations in this project, most recently updated first. */
+  conversations: ConversationSummary[];
+}
+
+/** Request body for POST /api/projects. */
+export interface CreateProjectRequest {
+  /** Project name. Required, non-empty. */
+  name: string;
+  /** Optional short description. */
+  description?: string;
+  /** Optional custom instructions. */
+  instructions?: string;
+}
+
+/** Request body for PATCH /api/projects/[id]. All fields optional (edit-in-place). */
+export interface UpdateProjectRequest {
+  name?: string;
+  description?: string | null;
+  instructions?: string | null;
+}
+
+/** Response body for POST /api/projects/[id]/files. */
+export interface UploadProjectFilesResponse {
+  files: ProjectFileInfo[];
+}
+
+/** Max number of knowledge files allowed per project. */
+export const MAX_PROJECT_FILES = 20;
+
+/**
+ * Hard cap on total knowledge characters composed into the system prompt across
+ * all of a project's files, to keep the context window bounded. Extraction may
+ * store more per file; the prompt composer truncates to this budget.
+ */
+export const MAX_PROJECT_KNOWLEDGE_CHARS = 100_000;

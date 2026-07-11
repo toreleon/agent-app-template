@@ -23,6 +23,7 @@ model User {
   conversations Conversation[]
   mcpServers    McpServer[]
   schedules     Schedule[]
+  projects      Project[]
 }
 
 // ---- NextAuth standard models ----
@@ -76,16 +77,24 @@ model Conversation {
   // Set when this conversation was created by a scheduled-task run. Nulled (not
   // cascaded) if the owning Schedule is deleted, so past run chats survive.
   scheduleId String?
+  // Set when this conversation belongs to a Project (ChatGPT/Claude-style). The
+  // project's custom instructions + knowledge files are injected into the system
+  // prompt for every turn in this chat. Deleting a project deletes its chats,
+  // handled in application code (see DELETE /api/projects/[id]); "Remove from
+  // project" nulls this column instead.
+  projectId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   schedule  Schedule?  @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
   messages  Message[]
   artifacts Artifact[]
 
   @@index([userId])
   @@index([scheduleId])
+  @@index([projectId])
 }
 
 model Message {
@@ -98,6 +107,7 @@ model Message {
   reasoning      String? // Reasoning summary text (assistant messages only)
   reasoningMs    Int? // Time spent producing the reasoning summary, in ms
   artifactRefs   String? // JSON-encoded ArtifactRef[] — artifacts this message created/updated
+  research       String? // JSON-encoded ResearchState — Deep Research plan + activity log
   createdAt      DateTime @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
@@ -233,4 +243,44 @@ model ScheduleRun {
   schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
   @@index([scheduleId])
+}
+
+// A ChatGPT/Claude-style Project: a workspace that groups conversations around a
+// shared purpose. Its `instructions` (custom instructions) and attached
+// knowledge `files` are composed into the system prompt for every chat in the
+// project (see src/lib/projects/prompt.ts). Deleting a project cascades to its
+// files (real FK below) and — handled in application code — to its chats.
+model Project {
+  id           String   @id @default(cuid())
+  userId       String
+  name         String
+  description  String? // optional short summary shown on the project card
+  instructions String? // custom instructions injected into every chat's system prompt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files         ProjectFile[]
+  conversations Conversation[]
+
+  @@index([userId])
+}
+
+// One knowledge file attached to a Project. The raw file is persisted under
+// public/uploads (like message attachments); `content` holds the extracted
+// UTF-8 text used as reference context, or null when the type is unsupported or
+// extraction failed (the file is still listed, just not fed to the model).
+model ProjectFile {
+  id        String   @id @default(cuid())
+  projectId String
+  name      String // original filename
+  type      String // MIME type
+  size      Int // bytes
+  url       String // "/uploads/<stored>"
+  content   String? // extracted text (knowledge); null when unavailable
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
 }

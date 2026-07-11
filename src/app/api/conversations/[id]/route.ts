@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { loadConversationArtifacts } from "@/lib/artifacts";
+import { toConversationSummary } from "@/lib/conversations";
 import {
   type ApiError,
   type ArtifactRef,
@@ -10,6 +11,7 @@ import {
   type ChatRole,
   type ConversationDetail,
   type ConversationSummary,
+  type ResearchState,
   type ToolCallRecord,
   type UpdateConversationRequest,
 } from "@/lib/types";
@@ -29,6 +31,17 @@ function decodeJsonArray<T>(value: string | null): T[] | undefined {
       return parsed as T[];
     }
     return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Decode the Deep Research JSON column so the activity block rehydrates on reload. */
+function decodeResearch(value: string | null): ResearchState | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(value) as ResearchState;
+    return parsed && typeof parsed === "object" ? parsed : undefined;
   } catch {
     return undefined;
   }
@@ -64,6 +77,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     attachments: decodeJsonArray<Attachment>(m.attachments),
     toolCalls: decodeJsonArray<ToolCallRecord>(m.toolCalls),
     artifactRefs: decodeJsonArray<ArtifactRef>(m.artifactRefs),
+    research: decodeResearch(m.research),
     createdAt: m.createdAt.toISOString(),
   }));
 
@@ -73,6 +87,7 @@ export async function GET(_req: Request, { params }: RouteParams) {
     id: conversation.id,
     title: conversation.title,
     model: conversation.model,
+    projectId: conversation.projectId,
     createdAt: conversation.createdAt.toISOString(),
     updatedAt: conversation.updatedAt.toISOString(),
     messages,
@@ -82,7 +97,11 @@ export async function GET(_req: Request, { params }: RouteParams) {
   return Response.json(detail);
 }
 
-/** PATCH /api/conversations/[id] — rename. */
+/**
+ * PATCH /api/conversations/[id] — edit-in-place. Supports renaming (`title`)
+ * and/or moving the conversation into a project (`projectId: "<id>"`) or out of
+ * one (`projectId: null`). At least one field must be provided.
+ */
 export async function PATCH(req: Request, { params }: RouteParams) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -101,15 +120,52 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     });
   }
 
-  const title = typeof body?.title === "string" ? body.title.trim() : "";
-  if (!title) {
+  const data: { title?: string; projectId?: string | null } = {};
+
+  // Rename: when `title` is present it must be a non-empty string.
+  if (body.title !== undefined) {
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (!title) {
+      return Response.json(
+        { error: "Title must be a non-empty string" } satisfies ApiError,
+        { status: 400 },
+      );
+    }
+    data.title = title;
+  }
+
+  // Move/remove: `projectId` null removes from a project; a string moves into a
+  // project the user owns (unknown/unowned → 404 so we never leak existence).
+  if (body.projectId !== undefined) {
+    if (body.projectId === null) {
+      data.projectId = null;
+    } else if (typeof body.projectId === "string" && body.projectId) {
+      const project = await prisma.project.findFirst({
+        where: { id: body.projectId, userId },
+        select: { id: true },
+      });
+      if (!project) {
+        return Response.json({ error: "Not found" } satisfies ApiError, {
+          status: 404,
+        });
+      }
+      data.projectId = project.id;
+    } else {
+      return Response.json(
+        { error: "projectId must be a project id or null" } satisfies ApiError,
+        { status: 400 },
+      );
+    }
+  }
+
+  if (data.title === undefined && data.projectId === undefined) {
     return Response.json(
-      { error: "Title must be a non-empty string" } satisfies ApiError,
+      { error: "Provide a title and/or projectId to update" } satisfies ApiError,
       { status: 400 },
     );
   }
 
-  // Ownership check via updateMany count to avoid leaking existence.
+  // Ownership check to avoid leaking existence.
   const existing = await prisma.conversation.findFirst({
     where: { id: params.id, userId },
     select: { id: true },
@@ -122,16 +178,17 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
   const updated = await prisma.conversation.update({
     where: { id: params.id },
-    data: { title },
-    select: { id: true, title: true, model: true, updatedAt: true },
+    data,
+    select: {
+      id: true,
+      title: true,
+      model: true,
+      projectId: true,
+      updatedAt: true,
+    },
   });
 
-  const summary: ConversationSummary = {
-    id: updated.id,
-    title: updated.title,
-    model: updated.model,
-    updatedAt: updated.updatedAt.toISOString(),
-  };
+  const summary: ConversationSummary = toConversationSummary(updated);
 
   return Response.json(summary);
 }

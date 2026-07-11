@@ -3,6 +3,11 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { streamChat } from "@/lib/agent";
 import {
+  streamClarifyingQuestions,
+  streamDeepResearch,
+} from "@/lib/research/orchestrator";
+import { loadProjectContext } from "@/lib/projects/prompt";
+import {
   applyArtifactCommand,
   toolNameToArtifactCommand,
 } from "@/lib/artifacts";
@@ -19,6 +24,9 @@ import {
   type ChatRequest,
   type ChatRole,
   type ReasoningEffort,
+  type ResearchActivity,
+  type ResearchPlan,
+  type ResearchState,
   type StreamEvent,
   type ToolCallRecord,
 } from "@/lib/types";
@@ -46,6 +54,18 @@ function decodeJsonArray<T>(value: string | null): T[] | undefined {
 function encodeJsonArray(value: unknown[] | undefined): string | null {
   if (!value || value.length === 0) return null;
   return JSON.stringify(value);
+}
+
+/** Decode the JSON-string `research` column into ResearchState, tolerating bad data. */
+function decodeResearch(value: string | null): ResearchState | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (parsed && typeof parsed === "object") return parsed as ResearchState;
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Build a short, clean title from the first user message. */
@@ -106,16 +126,22 @@ export async function POST(req: Request) {
       ? (body.effort as ReasoningEffort)
       : DEFAULT_EFFORT;
 
+  // Deep Research mode: when true, this turn either asks clarifying questions
+  // (first research turn) or runs the full research pipeline (the turn that
+  // answers them). The phase is derived from history below.
+  const deepResearch = body.deepResearch === true;
+
   // ---- Resolve or create the conversation ----
   let conversationId: string;
   let isNewConversation = false;
   let conversationTitle: string;
   let conversationModel: string;
+  let conversationProjectId: string | null;
 
   if (body.conversationId) {
     const convo = await prisma.conversation.findFirst({
       where: { id: body.conversationId, userId },
-      select: { id: true, title: true, model: true },
+      select: { id: true, title: true, model: true, projectId: true },
     });
     if (!convo) {
       return Response.json({ error: "Not found" } satisfies ApiError, {
@@ -125,16 +151,34 @@ export async function POST(req: Request) {
     conversationId = convo.id;
     conversationTitle = convo.title;
     conversationModel = convo.model;
+    conversationProjectId = convo.projectId;
   } else {
+    // New conversation: honor an optional projectId, but only when it names a
+    // project this user owns. An unknown/unowned id is silently ignored so a
+    // stale client can never attach a chat to someone else's project.
+    let projectId: string | null = null;
+    if (typeof body.projectId === "string" && body.projectId) {
+      const project = await prisma.project.findFirst({
+        where: { id: body.projectId, userId },
+        select: { id: true },
+      });
+      projectId = project?.id ?? null;
+    }
     const created = await prisma.conversation.create({
-      data: { title: "New chat", model, userId },
-      select: { id: true, title: true, model: true },
+      data: { title: "New chat", model, userId, projectId },
+      select: { id: true, title: true, model: true, projectId: true },
     });
     conversationId = created.id;
     conversationTitle = created.title;
     conversationModel = created.model;
+    conversationProjectId = created.projectId;
     isNewConversation = true;
   }
+
+  // Project-scoped conversations inject the project's custom instructions +
+  // knowledge into the system prompt. Never throws (degrades to no context).
+  const projectContext =
+    (await loadProjectContext(prisma, conversationProjectId)) ?? undefined;
 
   // ---- Load prior history (before persisting the new user turn) ----
   const priorMessages = await prisma.message.findMany({
@@ -148,8 +192,19 @@ export async function POST(req: Request) {
     content: m.content,
     attachments: decodeJsonArray<Attachment>(m.attachments),
     toolCalls: decodeJsonArray<ToolCallRecord>(m.toolCalls),
+    research: decodeResearch(m.research),
     createdAt: m.createdAt.toISOString(),
   }));
+
+  // ---- Deep Research phase detection ----
+  // Look at the most recent assistant turn: if it asked clarifying questions,
+  // this turn (the user's answers) runs the full research pipeline; otherwise a
+  // fresh Deep Research turn asks the clarifying questions first.
+  const lastAssistant = [...history]
+    .reverse()
+    .find((m) => m.role === "assistant");
+  const isResearchPhase =
+    deepResearch && lastAssistant?.research?.phase === "clarifying";
 
   // Determine if we should auto-title: only on the first exchange of a convo
   // that still carries the default title.
@@ -201,6 +256,8 @@ export async function POST(req: Request) {
       const artifactRefs: ArtifactRef[] = [];
       let toolSeq = 0;
       let sawError = false;
+      // JSON-encoded ResearchState for Deep Research turns; null for normal chat.
+      let researchColumn: string | null = null;
 
       // Captured before streaming so reasoning duration is measured from the
       // moment we start the run. Date.now() is allowed in app code.
@@ -214,7 +271,126 @@ export async function POST(req: Request) {
         // 1) message_id near the start.
         send({ type: "message_id", id: assistantMessageId });
 
-        // 2..4) stream agent output.
+        // 2..4) stream agent output. Deep Research branches into its own
+        // pipeline (clarify questions, then the full research + report); normal
+        // turns keep the existing tool-enabled agent path unchanged.
+        if (deepResearch && isResearchPhase) {
+          // RESEARCH phase: reconstruct the brief from the clarifying turn's
+          // stored brief (fallback: the last user message before it), then run
+          // the full research pipeline and stream the report inline.
+          let originalQuery = lastAssistant?.research?.brief ?? "";
+          if (!originalQuery && lastAssistant) {
+            const idx = history.indexOf(lastAssistant);
+            for (let i = idx - 1; i >= 0; i--) {
+              if (history[i].role === "user") {
+                originalQuery = history[i].content;
+                break;
+              }
+            }
+          }
+          const brief =
+            "Research topic:\n" +
+            originalQuery +
+            "\n\nUser clarifications:\n" +
+            message;
+
+          let researchPlan: ResearchPlan | undefined;
+          const researchActivities: ResearchActivity[] = [];
+
+          for await (const event of streamDeepResearch({
+            brief,
+            model: conversationModel,
+            effort,
+            userId,
+            conversationId,
+          })) {
+            switch (event.type) {
+              case "research_plan":
+                researchPlan = event.plan;
+                send(event);
+                break;
+              case "research_activity": {
+                // Upsert by stable id: a finishing search/source replaces its
+                // in-progress entry rather than appending a duplicate.
+                const idx = researchActivities.findIndex(
+                  (a) => a.id === event.activity.id,
+                );
+                if (idx >= 0) researchActivities[idx] = event.activity;
+                else researchActivities.push(event.activity);
+                send(event);
+                break;
+              }
+              case "reasoning_delta":
+                reasoning += event.text;
+                send(event);
+                break;
+              case "reasoning_done":
+                if (reasoningMs === null) {
+                  reasoningMs = Date.now() - startedAt;
+                }
+                send(event);
+                break;
+              case "delta":
+                assembled += event.text;
+                send(event);
+                break;
+              case "error":
+                sawError = true;
+                send(event);
+                break;
+              default:
+                break;
+            }
+          }
+
+          const sourceCount = researchActivities.filter(
+            (a) => a.kind === "source" && a.status === "done",
+          ).length;
+          researchColumn = JSON.stringify({
+            phase: "report",
+            brief,
+            plan: researchPlan,
+            activities: researchActivities,
+            sourceCount,
+          } satisfies ResearchState);
+        } else if (deepResearch) {
+          // CLARIFY phase (first Deep Research turn): ask 2-3 clarifying
+          // questions as a normal streamed assistant message. The next turn
+          // (the user's answers) runs the RESEARCH phase above.
+          for await (const event of streamClarifyingQuestions({
+            query: message,
+            history,
+            model: conversationModel,
+            effort,
+          })) {
+            switch (event.type) {
+              case "reasoning_delta":
+                reasoning += event.text;
+                send(event);
+                break;
+              case "reasoning_done":
+                if (reasoningMs === null) {
+                  reasoningMs = Date.now() - startedAt;
+                }
+                send(event);
+                break;
+              case "delta":
+                assembled += event.text;
+                send(event);
+                break;
+              case "error":
+                sawError = true;
+                send(event);
+                break;
+              default:
+                break;
+            }
+          }
+          researchColumn = JSON.stringify({
+            phase: "clarifying",
+            brief: message,
+          } satisfies ResearchState);
+        } else {
         for await (const event of streamChat({
           model: conversationModel,
           conversationId,
@@ -222,6 +398,7 @@ export async function POST(req: Request) {
           userMessage,
           effort,
           userId,
+          projectContext,
         })) {
           switch (event.type) {
             case "reasoning_delta":
@@ -301,6 +478,7 @@ export async function POST(req: Request) {
               break;
           }
         }
+        }
 
         // ---- Persist final assistant message + bump conversation ----
         await prisma.message.update({
@@ -311,6 +489,7 @@ export async function POST(req: Request) {
             reasoning: reasoning.length > 0 ? reasoning : null,
             reasoningMs,
             artifactRefs: encodeJsonArray(artifactRefs),
+            research: researchColumn,
           },
         });
 
@@ -344,6 +523,7 @@ export async function POST(req: Request) {
               reasoning: reasoning.length > 0 ? reasoning : null,
               reasoningMs,
               artifactRefs: encodeJsonArray(artifactRefs),
+              research: researchColumn,
             },
           });
           await prisma.conversation.update({
