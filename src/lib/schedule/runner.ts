@@ -88,6 +88,7 @@ async function executeScheduleRun(
     //    is surfaced on result.error alongside whatever was assembled.
     const result = await runChatCompletion({
       model: schedule.model,
+      conversationId,
       history: [],
       userMessage,
       effort: schedule.effort as ReasoningEffort,

@@ -217,6 +217,7 @@ export async function POST(req: Request) {
         // 2..4) stream agent output.
         for await (const event of streamChat({
           model: conversationModel,
+          conversationId,
           history,
           userMessage,
           effort,

@@ -11,6 +11,9 @@ dev.db-journal
 # directory but never commit uploaded files.
 /public/uploads/*
 !/public/uploads/.gitkeep
+# Per-conversation coding-agent sandboxes (src/lib/sandbox/confine.ts). Scratch
+# working trees — never commit them.
+/.workspaces
 *.log
 .DS_Store
 next-env.d.ts
