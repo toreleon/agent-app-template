@@ -16,6 +16,10 @@ model User {
   email          String  @unique
   hashedPassword String?
   image          String?
+  // JSON-encoded global custom instructions (ChatGPT "Customize ChatGPT"):
+  // { nickname, occupation, traits, about, enabled }. Injected into the system
+  // prompt for every chat when enabled — see src/lib/user/prompt.ts.
+  customInstructions String?
   createdAt      DateTime @default(now())
 
   accounts      Account[]
@@ -24,6 +28,7 @@ model User {
   mcpServers    McpServer[]
   schedules     Schedule[]
   projects      Project[]
+  plugins       Plugin[]
 }
 
 // ---- NextAuth standard models ----
@@ -189,8 +194,51 @@ model McpServer {
 
   toolsCache String? // JSON-encoded McpToolInfo[]
   lastError  String?
+
+  // Set when this server was registered from a plugin's bundled MCP config
+  // (.mcp.json). Plain column, NOT a Prisma relation — uninstalling a plugin
+  // deletes its bundled servers via an explicit deleteMany in application code
+  // (SQLite FK enforcement is off; cascades are emulated). Null for servers the
+  // user added by hand in the Connectors UI.
+  pluginId String?
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([pluginId])
+}
+
+// A user-installed Claude plugin (skills + optional bundled MCP servers). Cloned
+// from a git repo or copied from a local folder into `installPath` (under
+// .plugins/<userId>/<id>, outside the model-visible sandbox). Its SKILL.md
+// skills are exposed to the agent via progressive disclosure: only each skill's
+// name+description sits in the system prompt (see src/lib/plugins/context.ts),
+// and the model pulls a skill's full body on demand through the `skill` tool.
+// `skillsCache` holds the discovered skills as JSON (mirrors McpServer.toolsCache)
+// so per-skill enable/disable is a JSON mutation with no second table. Only
+// enabled plugins' enabled skills are injected. Deleting a plugin cascades (in
+// app code) to its bundled McpServer rows and removes `installPath` from disk.
+model Plugin {
+  id          String  @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  version     String?
+  author      String?
+  // "git" | "local"
+  sourceType  String
+  sourceUrl   String // git URL or local path as the user entered it
+  gitRef      String? // branch/tag/commit for a git source
+  marketplace String? // marketplace name when installed from a marketplace repo
+  installPath String // absolute path of the cloned/copied plugin tree on disk
+  skillsCache String? // JSON-encoded PluginSkill[] ({ name, description, dir, enabled })
+  enabled     Boolean @default(true)
+  lastError   String? // install/parse warnings (e.g. skipped stdio MCP servers)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

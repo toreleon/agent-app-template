@@ -7,6 +7,8 @@ import {
   streamDeepResearch,
 } from "@/lib/research/orchestrator";
 import { loadProjectContext } from "@/lib/projects/prompt";
+import { loadUserContext } from "@/lib/user/prompt";
+import { loadSkillsContext } from "@/lib/plugins/context";
 import {
   applyArtifactCommand,
   toolNameToArtifactCommand,
@@ -189,10 +191,19 @@ export async function POST(req: Request) {
     isNewConversation = true;
   }
 
-  // Project-scoped conversations inject the project's custom instructions +
-  // knowledge into the system prompt. Never throws (degrades to no context).
+  // System-prompt context: the user's global custom instructions ("Customize
+  // ChatGPT") plus, for project-scoped chats, the project's instructions +
+  // knowledge. Both degrade to nothing on error; combined into one block passed
+  // as `projectContext` so no agent-signature change is needed.
+  const userContext = await loadUserContext(prisma, userId);
+  const projContext = await loadProjectContext(prisma, conversationProjectId);
   const projectContext =
-    (await loadProjectContext(prisma, conversationProjectId)) ?? undefined;
+    [userContext, projContext].filter(Boolean).join("\n\n") || undefined;
+
+  // Installed plugin skills: only each enabled skill's name + description goes
+  // into the prompt (progressive disclosure); the model pulls a skill's full
+  // body on demand via the `skill` tool. Degrades to undefined on error.
+  const skillsContext = (await loadSkillsContext(userId)) || undefined;
 
   // ---- Load prior history (before persisting the new user turn) ----
   const priorMessages = await prisma.message.findMany({
@@ -425,6 +436,7 @@ export async function POST(req: Request) {
           effort,
           userId,
           projectContext,
+          skillsContext,
         })) {
           switch (event.type) {
             case "reasoning_delta": {

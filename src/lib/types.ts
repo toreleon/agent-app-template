@@ -800,3 +800,144 @@ export const MAX_PROJECT_FILES = 20;
  * store more per file; the prompt composer truncates to this budget.
  */
 export const MAX_PROJECT_KNOWLEDGE_CHARS = 100_000;
+
+// ---------------------------------------------------------------------------
+// User settings & profile (ChatGPT-style Settings)
+// ---------------------------------------------------------------------------
+
+/**
+ * Global custom instructions ("Customize ChatGPT"). When `enabled`, these are
+ * composed into the system prompt for every chat (see src/lib/user/prompt.ts).
+ */
+export interface CustomInstructions {
+  /** "What should ChatGPT call you?" */
+  nickname: string;
+  /** "What do you do?" */
+  occupation: string;
+  /** "What traits should ChatGPT have?" */
+  traits: string;
+  /** "Anything else ChatGPT should know?" */
+  about: string;
+  /** "Enable for new chats". */
+  enabled: boolean;
+}
+
+export const EMPTY_CUSTOM_INSTRUCTIONS: CustomInstructions = {
+  nickname: "",
+  occupation: "",
+  traits: "",
+  about: "",
+  enabled: true,
+};
+
+/** The signed-in user's profile + settings, returned by GET /api/user. */
+export interface UserProfile {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  customInstructions: CustomInstructions;
+}
+
+/** Request body for PATCH /api/user. */
+export interface UpdateUserRequest {
+  name?: string;
+  customInstructions?: CustomInstructions;
+}
+
+// ---------------------------------------------------------------------------
+// Claude plugins & skills
+// ---------------------------------------------------------------------------
+
+/** How a plugin was obtained. */
+export type PluginSourceType = "git" | "local";
+
+/**
+ * One skill discovered inside a plugin (a `skills/<name>/SKILL.md`, or a
+ * single-skill plugin's root SKILL.md). Persisted as JSON in
+ * `Plugin.skillsCache` — mirrors how McpServer caches its tool list — so
+ * per-skill enable/disable is a JSON mutation with no second table.
+ *
+ * Only `name` + `description` are ever placed in the system prompt (progressive
+ * disclosure); `dir` is the skill's directory RELATIVE to the plugin install
+ * root and is used by the `skill` tool to read the full SKILL.md body and any
+ * bundled resource files on demand.
+ */
+export interface PluginSkill {
+  /** Skill invocation name (SKILL.md frontmatter `name`, else the dir name). */
+  name: string;
+  /** What the skill does AND when to use it — the sole selection signal. */
+  description: string;
+  /** Skill directory relative to the plugin install root (e.g. "skills/pdf"). */
+  dir: string;
+  /** When false, the skill is hidden from the prompt and the `skill` tool. */
+  enabled: boolean;
+}
+
+/**
+ * Sanitized plugin shape returned by the /api/plugins routes. Never exposes the
+ * on-disk install path.
+ */
+export interface PluginDTO {
+  id: string;
+  name: string;
+  description?: string;
+  version?: string;
+  author?: string;
+  sourceType: PluginSourceType;
+  /** Git URL or local path the user entered. */
+  sourceUrl: string;
+  /** Git ref (branch/tag/commit) for a git source. */
+  gitRef?: string;
+  /** Marketplace name when this plugin came from a marketplace repo. */
+  marketplace?: string;
+  enabled: boolean;
+  skills: PluginSkill[];
+  /** Count of bundled MCP servers registered into the Connectors subsystem. */
+  mcpServerCount: number;
+  /** Install/parse warnings (e.g. skipped stdio MCP servers, skill errors). */
+  lastError?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** POST /api/plugins body — install a plugin from a git repo or local folder. */
+export interface InstallPluginRequest {
+  sourceType: PluginSourceType;
+  /** Git URL (https) or an absolute/relative local folder path. */
+  source: string;
+  /** Optional git ref (branch/tag/commit) for a git source. */
+  ref?: string;
+  /** Must be true — installing runs untrusted skill content in the prompt. */
+  trusted: boolean;
+}
+
+/** POST /api/plugins response — a source may yield several plugins (marketplace). */
+export interface InstallPluginResponse {
+  plugins: PluginDTO[];
+  /** Non-fatal notes surfaced to the user (skipped sources, unsupported MCP…). */
+  warnings: string[];
+}
+
+/** PATCH /api/plugins/[id] body. */
+export interface UpdatePluginRequest {
+  enabled?: boolean;
+}
+
+/** PATCH /api/plugins/[id]/skills/[skill] body. */
+export interface UpdateSkillRequest {
+  enabled: boolean;
+}
+
+/**
+ * Hard cap on total skill-metadata characters (name + description lines) placed
+ * in the system prompt across ALL enabled skills, so a user with many plugins
+ * can't blow the context window. The composer drops skills past this budget.
+ */
+export const MAX_SKILLS_PROMPT_CHARS = 20_000;
+
+/** Cap on a SKILL.md body returned by the `skill` tool (level-2 disclosure). */
+export const MAX_SKILL_BODY_BYTES = 64 * 1024;
+
+/** Cap on a bundled resource file returned by the `skill` tool (level 3). */
+export const MAX_SKILL_FILE_BYTES = 256 * 1024;

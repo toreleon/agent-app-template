@@ -25,6 +25,25 @@
   --font-inter: "Inter", system-ui, sans-serif;
 }
 
+/*
+ * Light theme. Applied by adding `light` to <html> (see the theme-init script in
+ * layout.tsx + the Settings "Theme" control). The dark palette above is the
+ * default (:root); this block only overrides the surface/text tokens, so every
+ * semantic-token-based component adapts automatically. The accent stays a
+ * user-chosen CSS var, set inline on <html>.
+ */
+:root.light {
+  --color-sidebar: 247 247 248; /* #f7f7f8 */
+  --color-main: 255 255 255; /* #ffffff */
+  --color-user-bubble: 244 244 244; /* #f4f4f4 */
+  --color-assistant-bubble: 255 255 255;
+  --color-composer: 244 244 244; /* #f4f4f4 */
+  --color-border: 227 227 227; /* #e3e3e3 */
+  --color-text-primary: 13 13 13; /* #0d0d0d */
+  --color-text-secondary: 108 108 118; /* muted slate */
+  --color-hover: 236 236 236; /* #ececec */
+}
+
 html,
 body {
   height: 100%;
