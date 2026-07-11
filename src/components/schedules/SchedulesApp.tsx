@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CalendarClock, Plus, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { AlarmClock, Plus, X } from "lucide-react";
 import type { ScheduleSummary } from "@/lib/types";
 import { useScheduleStore } from "@/store/schedules";
 import { useChatStore } from "@/store/chat";
@@ -10,18 +10,41 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/components/ui/cn";
 import { ScheduleRow } from "./ScheduleRow";
-import { ScheduleForm } from "./ScheduleForm";
+import { ScheduleForm, type ScheduleTemplate } from "./ScheduleForm";
 
-/**
- * Top-level client app for the /schedules route. Mirrors the ChatApp shell
- * (collapsible sidebar + content column) so navigation between chats and
- * scheduled tasks feels seamless, then renders the schedule list, empty state,
- * error banner, and the create/edit modal.
- */
+type Filter = "all" | "active" | "paused";
+
+const EXAMPLES: { label: string; template: ScheduleTemplate }[] = [
+  {
+    label: "Daily briefing",
+    template: {
+      title: "Daily briefing",
+      prompt: "Give me a concise briefing of today's top news and my calendar.",
+    },
+  },
+  {
+    label: "Weekly report",
+    template: {
+      title: "Weekly report",
+      prompt: "Summarize this week's progress into a short weekly report.",
+    },
+  },
+  {
+    label: "Reminder",
+    template: {
+      title: "Daily reminder",
+      prompt: "Remind me to review my top three priorities for the day.",
+    },
+  },
+];
+
+/** Top-level client app for /schedules — a ChatGPT-"Tasks"-style list. */
 export function SchedulesApp() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<ScheduleSummary | null>(null);
+  const [template, setTemplate] = useState<ScheduleTemplate | null>(null);
+  const [filter, setFilter] = useState<Filter>("all");
 
   const schedules = useScheduleStore((s) => s.schedules);
   const loading = useScheduleStore((s) => s.loading);
@@ -29,8 +52,6 @@ export function SchedulesApp() {
   const load = useScheduleStore((s) => s.load);
   const clearError = useScheduleStore((s) => s.clearError);
 
-  // The shared Sidebar reads the conversation list from the chat store; load it
-  // here too so the left rail is populated when landing directly on /schedules.
   const loadConversations = useChatStore((s) => s.loadConversations);
 
   useEffect(() => {
@@ -38,12 +59,32 @@ export function SchedulesApp() {
     void loadConversations();
   }, [load, loadConversations]);
 
-  function openCreate() {
+  // Active first, then soonest next-run; paused sink to the bottom.
+  const sorted = useMemo(() => {
+    return [...schedules].sort((a, b) => {
+      if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+      const at = a.nextRunAt ? Date.parse(a.nextRunAt) : Infinity;
+      const bt = b.nextRunAt ? Date.parse(b.nextRunAt) : Infinity;
+      return at - bt;
+    });
+  }, [schedules]);
+
+  const activeCount = schedules.filter((s) => s.enabled).length;
+  const pausedCount = schedules.length - activeCount;
+
+  const visible = useMemo(() => {
+    if (filter === "active") return sorted.filter((s) => s.enabled);
+    if (filter === "paused") return sorted.filter((s) => !s.enabled);
+    return sorted;
+  }, [sorted, filter]);
+
+  function openCreate(t: ScheduleTemplate | null = null) {
     setEditing(null);
+    setTemplate(t);
     setFormOpen(true);
   }
-
   function openEdit(schedule: ScheduleSummary) {
+    setTemplate(null);
     setEditing(schedule);
     setFormOpen(true);
   }
@@ -62,15 +103,13 @@ export function SchedulesApp() {
       </div>
 
       <div className="flex h-full min-w-0 flex-1 flex-col">
-        {/* Top bar */}
-        <header className="flex h-12 shrink-0 items-center justify-between gap-2 px-4">
-          <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-            <CalendarClock size={18} className="text-text-secondary" />
-            Scheduled tasks
+        <header className="flex h-14 shrink-0 items-center px-4">
+          <div className="mx-auto flex w-full max-w-3xl items-center justify-between">
+            <h1 className="text-lg font-semibold text-text-primary">Scheduled tasks</h1>
+            <Button size="sm" onClick={() => openCreate()}>
+              <Plus size={16} /> New task
+            </Button>
           </div>
-          <Button size="sm" onClick={openCreate}>
-            <Plus size={16} /> New task
-          </Button>
         </header>
 
         {error && (
@@ -87,9 +126,8 @@ export function SchedulesApp() {
           </div>
         )}
 
-        {/* Main area */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-3xl px-4 py-6">
+          <div className="mx-auto w-full max-w-3xl px-4 py-3">
             {loading && isEmpty ? (
               <div className="flex items-center justify-center py-20 text-text-secondary">
                 <Spinner size={22} />
@@ -97,11 +135,26 @@ export function SchedulesApp() {
             ) : isEmpty ? (
               <EmptyState onCreate={openCreate} />
             ) : (
-              <div className="flex flex-col gap-3">
-                {schedules.map((s) => (
-                  <ScheduleRow key={s.id} schedule={s} onEdit={openEdit} />
-                ))}
-              </div>
+              <>
+                {/* Filter tabs */}
+                <div className="mb-1 flex items-center gap-1 border-b border-border/60 pb-1">
+                  <FilterTab label="All" count={schedules.length} active={filter === "all"} onClick={() => setFilter("all")} />
+                  <FilterTab label="Active" count={activeCount} active={filter === "active"} onClick={() => setFilter("active")} />
+                  <FilterTab label="Paused" count={pausedCount} active={filter === "paused"} onClick={() => setFilter("paused")} />
+                </div>
+
+                {visible.length === 0 ? (
+                  <p className="py-10 text-center text-sm text-text-secondary">
+                    {filter === "paused" ? "No paused tasks." : "No active tasks."}
+                  </p>
+                ) : (
+                  <ul className="flex flex-col divide-y divide-border/40">
+                    {visible.map((s) => (
+                      <ScheduleRow key={s.id} schedule={s} onEdit={openEdit} />
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -110,28 +163,68 @@ export function SchedulesApp() {
       <ScheduleForm
         open={formOpen}
         schedule={editing}
+        template={template}
         onClose={() => setFormOpen(false)}
       />
     </div>
   );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function FilterTab({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 py-16 text-center">
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "relative rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+        active ? "text-text-primary" : "text-text-secondary hover:text-text-primary",
+      )}
+    >
+      {label}
+      <span className="ml-1.5 text-xs text-text-secondary">{count}</span>
+      {active && (
+        <span className="absolute inset-x-2 -bottom-1 h-0.5 rounded-full bg-text-primary" />
+      )}
+    </button>
+  );
+}
+
+function EmptyState({ onCreate }: { onCreate: (t?: ScheduleTemplate | null) => void }) {
+  return (
+    <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 py-14 text-center">
       <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-hover text-text-secondary">
-        <CalendarClock size={24} />
+        <AlarmClock size={24} />
       </span>
-      <h2 className="text-base font-semibold text-text-primary">
-        No scheduled tasks yet
-      </h2>
+      <h2 className="text-base font-semibold text-text-primary">No scheduled tasks yet</h2>
       <p className="mt-1 max-w-sm text-sm text-text-secondary">
-        Automate recurring work — a daily briefing, a weekly summary, an hourly
-        check. Each run starts a fresh conversation with your prompt.
+        Have the assistant do something on a schedule — like “Every weekday at 8 AM,
+        summarize the top AI news” — or create one here.
       </p>
-      <Button className="mt-5" size="sm" onClick={onCreate}>
-        <Plus size={16} /> New task
+      <Button className="mt-5" size="sm" onClick={() => onCreate()}>
+        <Plus size={16} /> Create task
       </Button>
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
+        {EXAMPLES.map((ex) => (
+          <button
+            key={ex.label}
+            type="button"
+            onClick={() => onCreate(ex.template)}
+            className="rounded-full border border-border px-3 py-1.5 text-xs text-text-secondary transition-colors hover:bg-hover hover:text-text-primary"
+          >
+            {ex.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

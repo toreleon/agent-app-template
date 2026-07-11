@@ -4,55 +4,35 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   AlertCircle,
-  CheckCircle2,
-  ChevronDown,
-  ChevronRight,
   Clock,
-  MessageSquare,
   MoreHorizontal,
+  Pause,
   Pencil,
   Play,
   Trash2,
 } from "lucide-react";
-import type { ScheduleRunStatus, ScheduleSummary } from "@/lib/types";
+import type { ScheduleSummary } from "@/lib/types";
 import { useScheduleStore } from "@/store/schedules";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { Spinner } from "@/components/ui/Spinner";
-import { Tooltip } from "@/components/ui/Tooltip";
 import { cn } from "@/components/ui/cn";
-import { ScheduleRunList } from "./ScheduleRunList";
-
-/** Format an ISO instant in a specific time zone, with an explicit tz label. */
-function formatInZone(iso: string, tz: string): string {
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      timeZone: tz,
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
+import { describeCronFriendly, nextRunLabel } from "@/lib/schedule/friendly";
 
 export interface ScheduleRowProps {
   schedule: ScheduleSummary;
   onEdit: (schedule: ScheduleSummary) => void;
 }
 
+/** One task in the Scheduled-tasks list (ChatGPT-style). */
 export function ScheduleRow({ schedule, onEdit }: ScheduleRowProps) {
   const update = useScheduleStore((s) => s.update);
   const remove = useScheduleStore((s) => s.remove);
   const runNow = useScheduleStore((s) => s.runNow);
-
-  const [expanded, setExpanded] = useState(false);
   const [running, setRunning] = useState(false);
 
   const { enabled, nextRunAt, timezone, lastRun } = schedule;
+  const scheduleText = describeCronFriendly(schedule.cron) ?? schedule.description;
+  const nextText = enabled && nextRunAt ? nextRunLabel(nextRunAt, timezone) : null;
 
   async function handleRunNow() {
     if (running) return;
@@ -62,71 +42,60 @@ export function ScheduleRow({ schedule, onEdit }: ScheduleRowProps) {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-sidebar/40">
-      <div className="flex items-start gap-3 px-4 py-3.5">
-        {/* Expand runs */}
+    <div
+      className={cn(
+        "group flex items-center gap-3 rounded-lg px-3 py-3 transition-colors hover:bg-hover",
+        !enabled && "opacity-55",
+      )}
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-hover text-text-secondary">
+        {running ? (
+          <Spinner size={15} className="text-amber-400" />
+        ) : lastRun?.status === "error" ? (
+          <AlertCircle size={16} className="text-red-400" />
+        ) : (
+          <Clock size={16} />
+        )}
+      </span>
+
+      <button
+        type="button"
+        onClick={() => onEdit(schedule)}
+        className="flex min-w-0 flex-1 flex-col text-left"
+        title={schedule.title}
+      >
+        <span className="truncate text-sm font-medium text-text-primary">
+          {schedule.title}
+        </span>
+        <span className="truncate text-xs text-text-secondary">
+          {scheduleText}
+          {nextText ? ` · Next run ${nextText}` : !enabled ? " · Paused" : ""}
+        </span>
+      </button>
+
+      {lastRun?.conversationId && (
+        <Link
+          href={`/c/${lastRun.conversationId}`}
+          className="hidden shrink-0 text-xs text-text-secondary transition-colors hover:text-text-primary group-hover:inline"
+        >
+          View last run
+        </Link>
+      )}
+
+      <div className="flex shrink-0 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
         <button
           type="button"
-          aria-label={expanded ? "Collapse run history" : "Show run history"}
-          onClick={() => setExpanded((e) => !e)}
-          className="mt-0.5 shrink-0 text-text-secondary transition-colors hover:text-text-primary"
+          onClick={() => onEdit(schedule)}
+          aria-label={`Edit ${schedule.title}`}
+          className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-border/50 hover:text-text-primary"
         >
-          {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          <Pencil size={15} />
         </button>
-
-        {/* Main info */}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "truncate text-sm font-semibold",
-                enabled ? "text-text-primary" : "text-text-secondary",
-              )}
-            >
-              {schedule.title}
-            </span>
-            {running ? (
-              <StatusChip status="running" />
-            ) : (
-              lastRun && <StatusChip status={lastRun.status} error={lastRun.error} />
-            )}
-          </div>
-
-          <p className="mt-0.5 truncate text-xs text-text-secondary">
-            {schedule.description || schedule.cron}
-          </p>
-
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-secondary">
-            <span className="inline-flex items-center gap-1">
-              <Clock size={12} />
-              {enabled && nextRunAt
-                ? `Next: ${formatInZone(nextRunAt, timezone)}`
-                : "Paused"}
-            </span>
-            {lastRun?.conversationId && (
-              <Link
-                href={`/c/${lastRun.conversationId}`}
-                className="inline-flex items-center gap-1 text-accent hover:underline"
-              >
-                <MessageSquare size={12} /> Last conversation
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Enable toggle */}
-        <Toggle
-          checked={enabled}
-          onChange={(next) => void update(schedule.id, { enabled: next })}
-          label={`${enabled ? "Disable" : "Enable"} ${schedule.title}`}
-        />
-
-        {/* Menu */}
         <Dropdown
           align="end"
           menuClassName="min-w-[11rem]"
           trigger={
-            <span className="flex h-7 w-7 items-center justify-center rounded-md text-text-secondary hover:bg-border/50 hover:text-text-primary">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md text-text-secondary hover:bg-border/50 hover:text-text-primary">
               <MoreHorizontal size={16} />
             </span>
           }
@@ -143,16 +112,19 @@ export function ScheduleRow({ schedule, onEdit }: ScheduleRowProps) {
               </DropdownItem>
               <DropdownItem
                 onClick={() => {
-                  onEdit(schedule);
+                  void update(schedule.id, { enabled: !enabled });
                   close();
                 }}
               >
-                <Pencil size={15} /> Edit
+                {enabled ? <Pause size={15} /> : <Play size={15} />}
+                {enabled ? "Pause" : "Resume"}
               </DropdownItem>
               <DropdownItem
                 danger
                 onClick={() => {
-                  void remove(schedule.id);
+                  if (window.confirm(`Delete “${schedule.title}”? This can’t be undone.`)) {
+                    void remove(schedule.id);
+                  }
                   close();
                 }}
               >
@@ -162,82 +134,7 @@ export function ScheduleRow({ schedule, onEdit }: ScheduleRowProps) {
           )}
         </Dropdown>
       </div>
-
-      {expanded && (
-        <div className="border-t border-border/60 px-4 py-3">
-          <ScheduleRunList scheduleId={schedule.id} />
-        </div>
-      )}
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Status chip
-// ---------------------------------------------------------------------------
-
-function StatusChip({
-  status,
-  error,
-}: {
-  status: ScheduleRunStatus;
-  error?: string | null;
-}) {
-  if (status === "success") {
-    return (
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-400">
-        <CheckCircle2 size={12} /> Success
-      </span>
-    );
-  }
-  if (status === "error") {
-    return (
-      <Tooltip label={error || "Run failed"}>
-        <span className="inline-flex shrink-0 cursor-default items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-medium text-red-400">
-          <AlertCircle size={12} /> Failed
-        </span>
-      </Tooltip>
-    );
-  }
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-400">
-      <Spinner size={11} className="text-amber-400" /> Running
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Toggle switch (mirrors the SettingsModal connector toggle)
-// ---------------------------------------------------------------------------
-
-function Toggle({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-text-secondary/50",
-        checked ? "bg-accent" : "bg-border",
-      )}
-    >
-      <span
-        className={cn(
-          "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
-          checked ? "translate-x-4" : "translate-x-0.5",
-        )}
-      />
-    </button>
   );
 }
 
