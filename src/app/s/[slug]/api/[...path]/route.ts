@@ -34,6 +34,13 @@
 import { resolveBackendSite } from "@/lib/sites/gate";
 import { siteStore, SiteQuotaExceededError } from "@/lib/sites/data-db";
 import { sitesDomain, slugFromHost } from "@/lib/sites/origin";
+import {
+  newVisitorToken,
+  readVisitorToken,
+  visitorPublicId,
+  visitorScope,
+  visitorSetCookie,
+} from "@/lib/sites/visitor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,19 +57,30 @@ type Params = { params: { slug: string; path?: string[] } };
 // Response helper — the hardened header contract on EVERY response
 // ---------------------------------------------------------------------------
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "content-security-policy": "sandbox; default-src 'none'",
-      "x-content-type-options": "nosniff",
-      "referrer-policy": "no-referrer",
-      "cache-control": "no-store",
-    },
-  });
+function json(body: unknown, status = 200, setCookie?: string): Response {
+  const headers: Record<string, string> = {
+    "content-type": "application/json; charset=utf-8",
+    "content-security-policy": "sandbox; default-src 'none'",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "cache-control": "no-store",
+  };
+  if (setCookie) headers["set-cookie"] = setCookie;
+  return new Response(JSON.stringify(body), { status, headers });
 }
 const notFound = () => json({ error: "not_found" }, 404);
+
+/**
+ * Resolve the per-visitor identity from the `sv` cookie, minting a fresh token +
+ * Set-Cookie when the visitor is new. The token scopes private data; the caller
+ * threads `setCookie` into its response so the browser stores the identity.
+ */
+function getVisitor(req: Request): { token: string; setCookie?: string } {
+  const existing = readVisitorToken(req);
+  if (existing) return { token: existing };
+  const token = newVisitorToken();
+  return { token, setCookie: visitorSetCookie(token) };
+}
 
 // ---------------------------------------------------------------------------
 // Request helpers
@@ -121,6 +139,22 @@ function validName(s: string | undefined): s is string {
   return typeof s === "string" && NAME_RE.test(s);
 }
 
+/**
+ * Resolve a kv write/delete target from the path: shared `kv/<c>/<k>` or private
+ * per-visitor `me/kv/<c>/<k>`. Returns null when the path isn't a kv target.
+ */
+function kvTarget(
+  path: string[],
+): { collection: string; key: string; private: boolean } | null {
+  if (path[0] === "kv" && path.length === 3) {
+    return { collection: path[1], key: path[2], private: false };
+  }
+  if (path[0] === "me" && path[1] === "kv" && path.length === 4) {
+    return { collection: path[2], key: path[3], private: true };
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
@@ -129,6 +163,20 @@ export async function GET(req: Request, { params }: Params) {
   const r = await resolve(req, params);
   if ("deny" in r) return r.deny;
   const path = params.path ?? [];
+
+  // Per-visitor identity + private read (scoped to the sv cookie).
+  if (path[0] === "me") {
+    const v = getVisitor(req);
+    if (path.length === 1) {
+      return json({ visitorId: visitorPublicId(v.token) }, 200, v.setCookie);
+    }
+    if (path[1] === "kv" && path.length === 4) {
+      if (!validName(path[2]) || !validName(path[3])) return json({ error: "bad_name" }, 400);
+      const raw = await siteStore.kvGet(r.siteId, path[2], path[3], visitorScope(v.token));
+      return json({ value: raw === null ? null : safeParse(raw) }, 200, v.setCookie);
+    }
+    return notFound();
+  }
 
   if (path[0] === "kv" && path.length === 3) {
     if (!validName(path[1]) || !validName(path[2])) return json({ error: "bad_name" }, 400);
@@ -155,8 +203,13 @@ export async function PUT(req: Request, { params }: Params) {
   const r = await resolve(req, params);
   if ("deny" in r) return r.deny;
   const path = params.path ?? [];
-  if (path[0] !== "kv" || path.length !== 3) return notFound();
-  if (!validName(path[1]) || !validName(path[2])) return json({ error: "bad_name" }, 400);
+
+  // Resolve target: shared kv (/kv/c/k) or private per-visitor kv (/me/kv/c/k).
+  const target = kvTarget(path);
+  if (!target) return notFound();
+  if (!validName(target.collection) || !validName(target.key)) {
+    return json({ error: "bad_name" }, 400);
+  }
 
   const limited = await rateGuard(req, r.siteId);
   if (limited) return limited;
@@ -170,27 +223,35 @@ export async function PUT(req: Request, { params }: Params) {
   const serialized = JSON.stringify(rec.value);
   if (serialized.length > MAX_VALUE_BYTES) return json({ error: "value_too_large" }, 413);
 
+  const visitor = target.private ? getVisitor(req) : null;
+  const scope = visitor ? visitorScope(visitor.token) : "shared";
   try {
-    await siteStore.kvPut(r.siteId, path[1], path[2], serialized);
+    await siteStore.kvPut(r.siteId, target.collection, target.key, serialized, scope);
   } catch (e) {
     if (e instanceof SiteQuotaExceededError) return json({ error: "quota_exceeded" }, 413);
     throw e;
   }
-  return json({ ok: true });
+  return json({ ok: true }, 200, visitor?.setCookie);
 }
 
 export async function DELETE(req: Request, { params }: Params) {
   const r = await resolve(req, params);
   if ("deny" in r) return r.deny;
   const path = params.path ?? [];
-  if (path[0] !== "kv" || path.length !== 3) return notFound();
-  if (!validName(path[1]) || !validName(path[2])) return json({ error: "bad_name" }, 400);
+
+  const target = kvTarget(path);
+  if (!target) return notFound();
+  if (!validName(target.collection) || !validName(target.key)) {
+    return json({ error: "bad_name" }, 400);
+  }
 
   const limited = await rateGuard(req, r.siteId);
   if (limited) return limited;
 
-  const deleted = await siteStore.kvDelete(r.siteId, path[1], path[2]);
-  return json({ ok: true, deleted });
+  const visitor = target.private ? getVisitor(req) : null;
+  const scope = visitor ? visitorScope(visitor.token) : "shared";
+  const deleted = await siteStore.kvDelete(r.siteId, target.collection, target.key, scope);
+  return json({ ok: true, deleted }, 200, visitor?.setCookie);
 }
 
 export async function POST(req: Request, { params }: Params) {

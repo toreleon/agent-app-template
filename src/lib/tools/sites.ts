@@ -76,9 +76,10 @@ export const createSiteTool: Tool = tool({
           "static site. When set, the page may call the injected `Sites` API (available as " +
           "window.Sites): `await Sites.kv.get(collection, key)` / `await Sites.kv.put(collection, " +
           "key, value)` and `await Sites.docs.append(collection, obj)` / `await Sites.docs.list(" +
-          "collection)`. All data is SHARED and PUBLIC — anyone with the link can read AND write it, " +
-          "so never store secrets or private/personal info. Do NOT use localStorage for shared state; " +
-          "use the Sites API. The backend serves only once the site is deployed.",
+          "collection)`. `Sites.kv`/`Sites.docs` are SHARED and PUBLIC — anyone with the link can read " +
+          "AND write them, so never store secrets or private/personal info there. For PER-VISITOR " +
+          "private data use `Sites.me.kv.get/put(collection, key[, value])` + `Sites.me.id()`. Do NOT " +
+          "use localStorage. The backend serves only once the site is deployed.",
       ),
   }),
   async execute({ name }) {

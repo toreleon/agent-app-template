@@ -51,6 +51,22 @@ const SITES_SHIM = `<script>
       list: function (collection) {
         return req("GET", "/api/docs/" + enc(collection)).then(function (r) { return r.documents; });
       }
+    },
+    me: {
+      id: function () {
+        return req("GET", "/api/me").then(function (r) { return r.visitorId; });
+      },
+      kv: {
+        get: function (collection, key) {
+          return req("GET", "/api/me/kv/" + enc(collection) + "/" + enc(key)).then(function (r) { return r.value; });
+        },
+        put: function (collection, key, value) {
+          return req("PUT", "/api/me/kv/" + enc(collection) + "/" + enc(key), { value: value }).then(function () { return true; });
+        },
+        "delete": function (collection, key) {
+          return req("DELETE", "/api/me/kv/" + enc(collection) + "/" + enc(key)).then(function (r) { return r.deleted; });
+        }
+      }
     }
   };
 })();

@@ -29,6 +29,7 @@ import { loadPublicSite } from "@/lib/sites";
 import { sitesDomain, slugFromHost, siteCanonicalUrl } from "@/lib/sites/origin";
 import { resolveBackendSite } from "@/lib/sites/gate";
 import { injectSitesShim } from "@/lib/sites/shim";
+import { newVisitorToken, readVisitorToken, visitorSetCookie } from "@/lib/sites/visitor";
 import { buildSiteSrcDoc, SITE_CDN_HOSTS } from "@/components/artifacts/sandbox";
 
 export const runtime = "nodejs";
@@ -76,18 +77,24 @@ const REAL_ORIGIN_CSP = [
   "base-uri 'none'",
 ].join("; ");
 
-function html(body: string, status: number, extraCsp?: string): Response {
-  return new Response(body, {
-    status,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Content-Security-Policy": extraCsp ?? OPAQUE_CSP,
-      "X-Content-Type-Options": "nosniff",
-      "Referrer-Policy": "no-referrer",
-      "X-Frame-Options": "DENY",
-      "Cache-Control": status === 200 ? "public, max-age=60" : "no-store",
-    },
-  });
+function html(
+  body: string,
+  status: number,
+  extraCsp?: string,
+  opts?: { setCookie?: string; noStore?: boolean },
+): Response {
+  const headers: Record<string, string> = {
+    "Content-Type": "text/html; charset=utf-8",
+    "Content-Security-Policy": extraCsp ?? OPAQUE_CSP,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    // A backend page sets a per-visitor cookie and is dynamic → never cache it;
+    // a static page may be briefly cached.
+    "Cache-Control": status === 200 && !opts?.noStore ? "public, max-age=60" : "no-store",
+  };
+  if (opts?.setCookie) headers["Set-Cookie"] = opts.setCookie;
+  return new Response(body, { status, headers });
 }
 
 const NOT_FOUND = `<!doctype html>
@@ -138,8 +145,16 @@ export async function GET(req: Request, { params }: { params: { slug: string } }
   // shim so the page can reach its same-origin /api/* data plane. Never injected
   // on the legacy opaque origin (where same-origin fetch is blocked) or into
   // in-app artifact previews (which never hit this route).
-  if (viaSiteHost && (await resolveBackendSite(params.slug))) {
+  const backendEnabled = viaSiteHost && (await resolveBackendSite(params.slug)) != null;
+  let setCookie: string | undefined;
+  if (backendEnabled) {
     doc = injectSitesShim(doc);
+    // Issue the per-visitor identity cookie on first load so private data
+    // (Sites.me.*) works immediately, before the page's own scripts run.
+    if (!readVisitorToken(req)) setCookie = visitorSetCookie(newVisitorToken());
   }
-  return html(doc, 200, viaSiteHost ? REAL_ORIGIN_CSP : OPAQUE_CSP);
+  return html(doc, 200, viaSiteHost ? REAL_ORIGIN_CSP : OPAQUE_CSP, {
+    setCookie,
+    noStore: backendEnabled,
+  });
 }
