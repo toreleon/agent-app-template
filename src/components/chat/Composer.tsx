@@ -7,8 +7,6 @@ import type { Attachment, ComposerProps, SkillListItem } from "@/lib/types";
 import FileUpload from "@/components/upload/FileUpload";
 import { ModelPicker } from "./ModelPicker";
 import { ReasoningEffortPicker } from "./ReasoningEffortPicker";
-import { DeepResearchToggle } from "./DeepResearchToggle";
-import { useChatStore } from "@/store/chat";
 import { cn } from "@/components/ui/cn";
 
 const MAX_TEXTAREA_HEIGHT = 200;
@@ -45,31 +43,27 @@ export function Composer({
   const [value, setValue] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const deepResearch = useChatStore((s) => s.deepResearch);
-  const effectivePlaceholder = deepResearch
-    ? "Ask a research question…"
-    : placeholder;
 
-  // ---- Slash-command skill menu -------------------------------------------
+  // ---- Slash-command menu -------------------------------------------------
   // Typing "/" at the very start of the message opens an autocomplete of the
-  // user's installed skills; picking one inserts "/<skill> " so the rest of the
-  // line becomes the skill's input. The server validates the command and forces
-  // that skill for the turn (see /api/chat + resolveSlashSkill).
+  // app's built-in commands (Deep Research) plus the user's installed skills;
+  // picking one inserts "/<name> " so the rest of the line becomes its input.
+  // The server routes the command (see /api/chat: matchBuiltinCommand /
+  // resolveSlashSkill).
   const [skills, setSkills] = useState<SkillListItem[]>([]);
   const [menuIndex, setMenuIndex] = useState(0);
   const [menuDismissed, setMenuDismissed] = useState(false);
-  // True once we've fetched the skill list for the CURRENT slash session; reset
+  // True once we've fetched the menu list for the CURRENT slash session; reset
   // when the message stops being a slash command, so each new "/" refetches and
   // picks up plugins installed/removed in Settings without a page reload.
   const skillFetchSessionRef = useRef(false);
 
   // The message is a slash command "in progress" iff it's a leading /token with
-  // no space yet (deep-research turns don't use skills, so suppress there).
+  // no space yet.
   const slashQuery = useMemo(() => {
-    if (deepResearch) return null;
     const m = /^\/([A-Za-z0-9_-]*)$/.exec(value);
     return m ? m[1].toLowerCase() : null;
-  }, [value, deepResearch]);
+  }, [value]);
 
   const filteredSkills = useMemo(() => {
     if (slashQuery === null) return [];
@@ -290,7 +284,7 @@ export function Composer({
               onKeyDown={onKeyDown}
               rows={1}
               disabled={disabled}
-              placeholder={effectivePlaceholder}
+              placeholder={placeholder}
               className="max-h-[200px] flex-1 resize-none bg-transparent py-2 text-text-primary placeholder:text-text-secondary focus:outline-none disabled:cursor-not-allowed"
             />
 
@@ -327,7 +321,6 @@ export function Composer({
                 align="start"
               />
               <ReasoningEffortPicker disabled={isStreaming} side="top" align="start" />
-              <DeepResearchToggle disabled={isStreaming} />
             </div>
           </div>
         </div>

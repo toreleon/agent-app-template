@@ -9,6 +9,7 @@ import {
 import { loadProjectContext } from "@/lib/projects/prompt";
 import { loadUserContext } from "@/lib/user/prompt";
 import { loadSkillsContext, resolveSlashSkill } from "@/lib/plugins/context";
+import { matchBuiltinCommand, DEEP_RESEARCH_COMMAND } from "@/lib/plugins/builtin";
 import {
   applyArtifactCommand,
   toolNameToArtifactCommand,
@@ -112,13 +113,33 @@ export async function POST(req: Request) {
     });
   }
 
-  const message = typeof body?.message === "string" ? body.message.trim() : "";
-  if (!message) {
+  const rawMessage = typeof body?.message === "string" ? body.message.trim() : "";
+  if (!rawMessage) {
     return Response.json(
       { error: "message is required" } satisfies ApiError,
       { status: 400 },
     );
   }
+
+  // Deep Research is a BUILT-IN command: a message that starts with
+  // `/deep-research` triggers the research pipeline for this turn. When the
+  // command carries a question we strip the command, so the question is what
+  // gets persisted, searched, titled, and shown in the user bubble. (The legacy
+  // `body.deepResearch` flag still works, and a clarify turn auto-continues to
+  // the report phase below.)
+  const builtin = matchBuiltinCommand(rawMessage);
+  const isDeepResearchCommand = builtin?.command.name === DEEP_RESEARCH_COMMAND;
+  if (isDeepResearchCommand && !builtin!.rest) {
+    return Response.json(
+      {
+        error: "Deep Research needs a question — try /deep-research <your question>.",
+      } satisfies ApiError,
+      { status: 400 },
+    );
+  }
+  // For a /deep-research command the argument IS the message (guaranteed
+  // non-empty above); otherwise the raw message stands.
+  const message = isDeepResearchCommand ? builtin!.rest : rawMessage;
 
   // The effective model is resolved server-side (OPENAI_MODEL in .env wins, see
   // src/lib/agent.ts), so we never reject an unknown/stale client model — that
@@ -144,8 +165,9 @@ export async function POST(req: Request) {
 
   // Deep Research mode: when true, this turn either asks clarifying questions
   // (first research turn) or runs the full research pipeline (the turn that
-  // answers them). The phase is derived from history below.
-  const deepResearch = body.deepResearch === true;
+  // answers them). Triggered by the `/deep-research` built-in command or the
+  // legacy body flag; also auto-continued after a clarify turn (see below).
+  let deepResearch = body.deepResearch === true || isDeepResearchCommand;
 
   // ---- Resolve or create the conversation ----
   let conversationId: string;
@@ -246,8 +268,24 @@ export async function POST(req: Request) {
   const lastAssistant = [...history]
     .reverse()
     .find((m) => m.role === "assistant");
+  // Auto-continue: if the previous assistant turn asked Deep Research clarifying
+  // questions, a PLAIN answer this turn runs the report — no need to re-issue the
+  // command. But only for a plain answer: a follow-up that is itself a slash
+  // command (a fresh `/deep-research`, or any `/skill`) must NOT be swallowed
+  // into the research pipeline — it takes precedence (resolveSlashSkill above
+  // already resolved a skill for it).
+  if (
+    !rawMessage.startsWith("/") &&
+    lastAssistant?.research?.phase === "clarifying"
+  ) {
+    deepResearch = true;
+  }
+  // A FRESH `/deep-research` command always starts a new research (clarify) turn
+  // rather than being folded into a prior clarifying turn's report.
   const isResearchPhase =
-    deepResearch && lastAssistant?.research?.phase === "clarifying";
+    deepResearch &&
+    !isDeepResearchCommand &&
+    lastAssistant?.research?.phase === "clarifying";
 
   // Determine if we should auto-title: only on the first exchange of a convo
   // that still carries the default title.

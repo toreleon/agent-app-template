@@ -14,6 +14,12 @@ import { parseFrontmatter } from "./frontmatter";
 
 const MAX_SKILL_DESC = 1024;
 const MAX_SKILL_NAME = 64;
+/** Upper bound on skills discovered in one plugin (a big skill collection like
+ *  gstack has ~60) + a cap on directories walked, so a pathological repo can't
+ *  make discovery run unbounded. */
+const MAX_SKILLS_PER_PLUGIN = 500;
+const MAX_SKILL_SCAN_DIRS = 10_000;
+const MAX_SKILL_SCAN_DEPTH = 5;
 
 // ---- discovered shapes ----------------------------------------------------
 
@@ -187,6 +193,11 @@ function parseSkillDir(
   warnings: string[],
 ): DiscoveredSkill | null {
   const skillMd = path.join(pluginRoot, dir, "SKILL.md");
+  // Require a REAL SKILL.md — a regular file, not a symlink. install.ts copyTree
+  // skips symlinks, so a symlinked SKILL.md would never reach the install dir and
+  // the skill would error on every load; discovering it must agree with the copy.
+  const lst = fs.lstatSync(skillMd, { throwIfNoEntry: false });
+  if (!lst || !lst.isFile()) return null;
   let content: string;
   try {
     content = fs.readFileSync(skillMd, "utf8");
@@ -230,10 +241,18 @@ function parseSkillDir(
 }
 
 /**
- * Discover every skill in a plugin: the always-scanned `skills/<name>/SKILL.md`
- * dirs, the single-skill shortcut (a `SKILL.md` at the plugin root with no
- * `skills/` dir), and any extra dirs named in the manifest's `skills` field.
- * Deduplicates by skill name (first wins).
+ * Discover every skill in a plugin by a bounded breadth-first walk from the
+ * plugin root. A directory that DIRECTLY contains a SKILL.md is a skill (and a
+ * leaf — we don't descend into it, so a skill's own references/ can't spawn
+ * stray skills). The plugin ROOT is the one exception: it's always descended,
+ * because a repo may hold a top-level SKILL.md AND many sibling skill
+ * directories — the "flat collection" layout (e.g. github.com/garrytan/gstack:
+ * one dir per skill, no `skills/` parent). This one walk covers every real
+ * layout: `skills/<name>/SKILL.md`, top-level `<name>/SKILL.md`,
+ * `<container>/skills/<name>/SKILL.md`, and a lone root SKILL.md. A SKILL.md
+ * lacking valid name+description frontmatter is skipped by parseSkillDir, so a
+ * doc file named SKILL.md never becomes a skill. Also honors the manifest's
+ * `skills` paths. Deduplicates by skill name (first wins).
  */
 export function discoverSkills(
   pluginRoot: string,
@@ -245,12 +264,18 @@ export function discoverSkills(
   const seen = new Set<string>();
   const rootResolved = path.resolve(pluginRoot);
 
-  const add = (dir: string) => {
+  // Returns true when `dir` is a REAL skill dir (a valid SKILL.md parsed), even
+  // if its name was a dedup collision — the BFS uses this to decide whether the
+  // dir is a leaf. A dir whose SKILL.md is missing/invalid/a doc returns false
+  // so the walk keeps descending into it (its real nested skills aren't lost).
+  const add = (dir: string): boolean => {
     const skill = parseSkillDir(pluginRoot, dir, fallbackName, warnings);
-    if (!skill) return;
-    if (seen.has(skill.name)) return;
-    seen.add(skill.name);
-    found.push(skill);
+    if (!skill) return false;
+    if (!seen.has(skill.name)) {
+      seen.add(skill.name);
+      found.push(skill);
+    }
+    return true;
   };
 
   // Confine a manifest-supplied relative path to the plugin root (resolve +
@@ -262,27 +287,50 @@ export function discoverSkills(
     return abs === rootResolved || abs.startsWith(rootResolved + path.sep);
   };
 
-  const skillsDir = path.join(pluginRoot, "skills");
-  const hasSkillsDir =
-    fs.existsSync(skillsDir) && fs.statSync(skillsDir).isDirectory();
-
-  // Default `skills/*/SKILL.md` scan (one level deep).
-  if (hasSkillsDir) {
-    let subdirs: string[] = [];
-    try {
-      subdirs = fs
-        .readdirSync(skillsDir, { withFileTypes: true })
-        .filter((e) => e.isDirectory())
-        .map((e) => e.name);
-    } catch {
-      /* ignore */
+  // Bounded breadth-first walk (shallow skills first). Skip VCS/dep/manifest
+  // dirs and symlinks (e.isDirectory() is false for a symlink under lstat
+  // semantics, so a symlinked dir is neither descended nor added — avoids
+  // follow-out and duplicate aliases).
+  const SKIP_DIRS = new Set([".git", "node_modules", ".claude-plugin"]);
+  const queue: Array<{ rel: string; depth: number }> = [{ rel: ".", depth: 0 }];
+  let scanned = 0;
+  let truncated = false;
+  while (queue.length > 0) {
+    if (found.length >= MAX_SKILLS_PER_PLUGIN) break;
+    if (scanned >= MAX_SKILL_SCAN_DIRS) {
+      truncated = true;
+      break;
     }
-    for (const d of subdirs) add(path.join("skills", d));
+    const { rel, depth } = queue.shift()!;
+    scanned++;
+    const absDir = rel === "." ? pluginRoot : path.join(pluginRoot, rel);
+    if (fs.existsSync(path.join(absDir, "SKILL.md"))) {
+      const added = add(rel);
+      // A VALID skill directory is a leaf — except the root, which may hold a
+      // top-level SKILL.md alongside sibling skill directories. A dir whose
+      // SKILL.md is invalid/a doc/a symlink is NOT a leaf: keep descending so
+      // real skills nested beneath a container SKILL.md aren't dropped.
+      if (rel !== "." && added) continue;
+    }
+    if (depth >= MAX_SKILL_SCAN_DEPTH) continue;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(absDir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const e of entries) {
+      if (!e.isDirectory() || SKIP_DIRS.has(e.name)) continue;
+      queue.push({
+        rel: rel === "." ? e.name : path.join(rel, e.name),
+        depth: depth + 1,
+      });
+    }
   }
-
-  // Single-skill shortcut: SKILL.md at the plugin root, no skills/ dir.
-  if (!hasSkillsDir && fs.existsSync(path.join(pluginRoot, "SKILL.md"))) {
-    add(".");
+  if (truncated) {
+    warnings.push(
+      `Stopped scanning after ${MAX_SKILL_SCAN_DIRS} directories; some deeply-nested skills may be missing.`,
+    );
   }
 
   // Manifest `skills` additions: each entry is a relative path to either a skill

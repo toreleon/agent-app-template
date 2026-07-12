@@ -22,3 +22,9 @@ export {
   readSkillFile,
 } from "./context";
 export { GitCloneError } from "./git";
+export {
+  BUILTIN_COMMANDS,
+  DEEP_RESEARCH_COMMAND,
+  builtinSkillItems,
+  matchBuiltinCommand,
+} from "./builtin";
