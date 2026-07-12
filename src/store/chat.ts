@@ -18,7 +18,11 @@ import type {
   TraceItem,
 } from "@/lib/types";
 import { DEFAULT_MODEL, DEFAULT_EFFORT } from "@/lib/types";
-import type { WorkspaceScope } from "@/lib/workspace/types";
+import type {
+  WorkspaceScope,
+  RewindScope,
+  RewindResult,
+} from "@/lib/workspace/types";
 import type { ReasoningEffort } from "@/lib/types";
 import { extractToolArg } from "@/lib/toolActivity";
 import { parseSSE } from "@/lib/sse";
@@ -97,6 +101,8 @@ export interface ChatState {
   /** The open coding-workspace review pane, or null when closed. Mutually
    *  exclusive with openArtifactId — only one right pane shows at a time. */
   workspaceView: { scope: WorkspaceScope; messageId: string | null } | null;
+  /** The assistant message whose "rewind code state" dialog is open, or null. */
+  rewindTargetId: string | null;
 
   // ---- ui / status ----
   conversationsLoading: boolean;
@@ -147,6 +153,17 @@ export interface ChatState {
   closeWorkspace: () => void;
   /** Switch review scope (all changes vs a single turn). */
   setWorkspaceScope: (scope: WorkspaceScope, messageId?: string | null) => void;
+  /** Open the "rewind code state" dialog for an assistant message. */
+  openRewind: (messageId: string) => void;
+  /** Close the rewind dialog. */
+  closeRewind: () => void;
+  /** Rewind to `messageId`: restore code (workspace files), conversation
+   *  (activeLeafId), or both. Returns the code-restore summary when code was
+   *  restored. No-op while streaming. */
+  rewindTo: (
+    messageId: string,
+    scope: RewindScope,
+  ) => Promise<RewindResult | null>;
   sendMessage: (
     text: string,
     attachments: Attachment[],
@@ -195,6 +212,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   openArtifactId: null,
   openArtifactVersion: null,
   workspaceView: null,
+  rewindTargetId: null,
 
   conversationsLoading: false,
   messagesLoading: false,
@@ -235,6 +253,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       openArtifactId: null,
       openArtifactVersion: null,
       workspaceView: null,
+      rewindTargetId: null,
     });
     try {
       const res = await fetch(`/api/conversations/${id}`, { cache: "no-store" });
@@ -270,6 +289,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       openArtifactId: null,
       openArtifactVersion: null,
       workspaceView: null,
+      rewindTargetId: null,
       activeProjectId: projectId ?? null,
       // Deep Research is per-request, not a persistent conversation mode — don't
       // leak it into a fresh chat (which would silently start the clarify flow).
@@ -391,6 +411,75 @@ export const useChatStore = create<ChatState>((set, get) => ({
             },
           }
         : s,
+    );
+  },
+
+  openRewind: (messageId) => set({ rewindTargetId: messageId }),
+  closeRewind: () => set({ rewindTargetId: null }),
+
+  rewindTo: async (messageId, scope) => {
+    const cid = get().currentId;
+    if (!cid || get().isStreaming) return null;
+
+    // Code half FIRST: the restore endpoint derives its change set from the
+    // active branch, so restore before moving activeLeafId — otherwise the
+    // deleted-files count (and the replay fallback's delete list) would miss
+    // files that only exist on the not-yet-hidden later turns.
+    let result: RewindResult | null = null;
+    if (scope === "both" || scope === "code") {
+      try {
+        const res = await fetch(
+          `/api/conversations/${cid}/workspace/restore`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messageId }),
+          },
+        );
+        result = res.ok
+          ? ((await res.json()) as RewindResult)
+          : {
+              ok: false,
+              degraded: false,
+              restored: 0,
+              deleted: 0,
+              skipped: [],
+              preSha: null,
+              error: `Restore failed (${res.status})`,
+            };
+      } catch {
+        result = {
+          ok: false,
+          degraded: false,
+          restored: 0,
+          deleted: 0,
+          skipped: [],
+          preSha: null,
+          error: "Restore request failed",
+        };
+      }
+    }
+
+    // Conversation half: move the visible path to end at the target (reuses the
+    // same activeLeafId PATCH as switchVersion). Later turns stay in the tree.
+    if (scope === "both" || scope === "conversation") {
+      set({ activeLeafId: messageId });
+      void fetch(`/api/conversations/${cid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activeLeafId: messageId }),
+      }).catch(() => {});
+    }
+
+    return (
+      result ?? {
+        ok: true,
+        degraded: false,
+        restored: 0,
+        deleted: 0,
+        skipped: [],
+        preSha: null,
+      }
     );
   },
 
@@ -641,6 +730,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           openArtifactId: null,
           openArtifactVersion: null,
           workspaceView: null,
+          rewindTargetId: null,
         });
         if (typeof window !== "undefined") {
           window.history.replaceState(null, "", "/");
@@ -1218,6 +1308,33 @@ function failRunningSubagents(id: string, set: SetState) {
                   ...a,
                   status: "failed" as const,
                   // Freeze the live timer and close any in-flight trace step.
+                  endedAt: a.startedAt ? (a.endedAt ?? now) : a.endedAt,
+                  trace: a.trace?.map((t) =>
+                    t.status === "running" ? { ...t, status: "done" as const } : t,
+                  ),
+                }
+              : a,
+          ),
+        },
+      };
+    }),
+  }));
+}
+
+/**
+ * event of their own, so SETTLE any browsing card still "running" to "done" —
+ * browsing isn't a worker that "failed" — freezing its timer and closing any
+ * nothing is running.
+ */
+  const now = Date.now();
+  set((s) => ({
+    messages: s.messages.map((m) => {
+      return {
+        ...m,
+            a.status === "running"
+              ? {
+                  ...a,
+                  status: "done" as const,
                   endedAt: a.startedAt ? (a.endedAt ?? now) : a.endedAt,
                   trace: a.trace?.map((t) =>
                     t.status === "running" ? { ...t, status: "done" as const } : t,

@@ -32,6 +32,21 @@ export interface WorkspaceFileDiff {
 /** Review scope: everything since the empty baseline, or just one turn. */
 export type WorkspaceScope = "all" | "lastTurn";
 
+/** What a rewind restores. */
+export type RewindScope = "both" | "conversation" | "code";
+
+/** Client-facing result of a code restore (mirrors restore.ts RestoreResult). */
+export interface RewindResult {
+  ok: boolean;
+  /** True when the lossy replay fallback was used (no byte-exact snapshot). */
+  degraded: boolean;
+  restored: number;
+  deleted: number;
+  skipped: string[];
+  preSha: string | null;
+  error?: string;
+}
+
 /** A draft inline review comment anchored to one diff line, before it's
  *  submitted to the agent as a follow-up turn (Claude-Code-style). */
 export interface DraftComment {

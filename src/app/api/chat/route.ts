@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { streamChat } from "@/lib/agent";
+import { snapshotTurn, hasSnapshotStore } from "@/lib/workspace/snapshot";
+import { setSnapshotSha } from "@/lib/workspace/checkpoints";
 import {
   streamClarifyingQuestions,
   streamDeepResearch,
@@ -534,6 +536,27 @@ export async function POST(req: Request) {
       // JSON-encoded ResearchState for Deep Research turns; null for normal chat.
       let researchColumn: string | null = null;
 
+      // "Rewind code state": snapshot the workspace at the end of this turn (only
+      // for turns that touched files, or once a snapshot store already exists so
+      // the restore timeline stays 1:1 with turns). Best-effort — a snapshot
+      // failure must never break the SSE stream.
+      const snapshotWorkspaceTurn = async () => {
+        try {
+          const touchedFiles = toolCalls.some(
+            (t) =>
+              t.name === "write_file" ||
+              t.name === "edit_file" ||
+              t.name === "run_shell",
+          );
+          if (touchedFiles || (await hasSnapshotStore(conversationId))) {
+            const sha = await snapshotTurn(conversationId, assistantMessageId);
+            if (sha) await setSnapshotSha(assistantMessageId, sha);
+          }
+        } catch {
+          // best-effort snapshot
+        }
+      };
+
       // Captured before streaming so reasoning duration is measured from the
       // moment we start the run. Date.now() is allowed in app code.
       const startedAt = Date.now();
@@ -1019,6 +1042,10 @@ export async function POST(req: Request) {
           data: convoData,
         });
 
+        // Capture a "rewind code state" checkpoint of the workspace at this turn.
+        // Best-effort — must never break the SSE stream.
+        await snapshotWorkspaceTurn();
+
         // 4) title event (after content is settled). Suppressed on error so we
         // honor the "error then close" ordering (no events after `error`).
         if (newTitle && !sawError) {
@@ -1054,6 +1081,7 @@ export async function POST(req: Request) {
             where: { id: conversationId },
             data: { updatedAt: new Date(), activeLeafId: assistantMessageId },
           });
+          await snapshotWorkspaceTurn();
         } catch {
           // best-effort persistence
         }

@@ -48,10 +48,16 @@ export interface LoadedWorkspace {
  * Load the file-writing ops (write_file/edit_file, successful only) along the
  * conversation's visible path, in order. Returns found:false when the
  * conversation is missing or not owned by `userId`.
+ *
+ * `upToMessageId` (optional) walks the path ending at that message instead of
+ * the active leaf — i.e. reconstructs the workspace state AS OF that message
+ * (used by the rewind preview + replay fallback). An invalid id falls back to
+ * the active-leaf behavior.
  */
 export async function loadWorkspaceOps(
   conversationId: string,
   userId: string,
+  upToMessageId?: string,
 ): Promise<LoadedWorkspace> {
   const convo = await prisma.conversation.findUnique({
     where: { id: conversationId },
@@ -67,14 +73,17 @@ export async function loadWorkspaceOps(
   });
   const byId = new Map(messages.map((m) => [m.id, m]));
 
-  // Resolve the active leaf: the conversation's activeLeafId if valid, else the
-  // newest message. Then walk parent links to root and reverse → visible path.
+  // Resolve the leaf to walk up from: an explicit target (rewind), else the
+  // conversation's activeLeafId if valid, else the newest message. Then walk
+  // parent links to root and reverse → the path ending at that leaf.
   let leaf: string | null =
-    convo.activeLeafId && byId.has(convo.activeLeafId)
-      ? convo.activeLeafId
-      : messages.length > 0
-        ? messages.reduce((a, b) => (a.createdAt >= b.createdAt ? a : b)).id
-        : null;
+    upToMessageId && byId.has(upToMessageId)
+      ? upToMessageId
+      : convo.activeLeafId && byId.has(convo.activeLeafId)
+        ? convo.activeLeafId
+        : messages.length > 0
+          ? messages.reduce((a, b) => (a.createdAt >= b.createdAt ? a : b)).id
+          : null;
 
   const path: typeof messages = [];
   const seen = new Set<string>();

@@ -297,6 +297,25 @@ export async function atomicWrite(abs: string, content: string): Promise<void> {
   }
 }
 
+/**
+ * Delete a confined workspace file. Routes `relPath` through the same
+ * {@link resolveInside} gate as writes (NUL/absolute/escape/protected-path
+ * guards), then unlinks it, tolerating a missing file. Used only by the rewind
+ * feature's lossy replay fallback (the git snapshot path deletes via
+ * `git clean`). Never follows a symlink out of the workspace.
+ */
+export async function removeInside(
+  conversationId: string,
+  relPath: string,
+): Promise<void> {
+  const abs = resolveInside(conversationId, relPath, { forWrite: true });
+  try {
+    await fsp.unlink(abs);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+}
+
 /** The mtime recorded when `absPath` was last read this conversation, or
  *  undefined if it was never read. */
 export function getRecordedRead(

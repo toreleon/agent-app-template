@@ -12,6 +12,7 @@ import { Composer } from "./Composer";
 import { EmptyState } from "./EmptyState";
 import { ArtifactPanel } from "@/components/artifacts/ArtifactPanel";
 import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
+import { RewindDialog } from "@/components/workspace/RewindDialog";
 import { cn } from "@/components/ui/cn";
 
 export interface ChatAppProps {
@@ -348,6 +349,9 @@ export function ChatApp({ conversationId }: ChatAppProps) {
           <WorkspacePanel />
         </div>
       )}
+
+      {/* Rewind-code-state confirmation modal (opens from a message's Rewind button). */}
+      <RewindDialog />
     </div>
   );
 }

@@ -22,6 +22,7 @@ import { Markdown } from "@/components/markdown/Markdown";
 import { ArtifactChip } from "@/components/artifacts/ArtifactChip";
 import { SiteChip } from "@/components/sites/SiteChip";
 import { DiffStatsBadge } from "@/components/workspace/DiffStatsBadge";
+import { RewindButton } from "@/components/workspace/RewindButton";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ResearchActivity } from "./ResearchActivity";
 import { SubagentActivity } from "./SubagentActivity";
@@ -291,8 +292,9 @@ export function MessageItem({
         </div>
       )}
       {!isUser && touchedFiles(message.toolCalls) && (
-        <div className="my-2">
+        <div className="my-2 flex flex-wrap items-center gap-2">
           <DiffStatsBadge messageId={message.id} />
+          <RewindButton messageId={message.id} />
         </div>
       )}
       <div
