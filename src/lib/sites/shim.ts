@@ -84,6 +84,22 @@ const SITES_SHIM = `<script>
     },
     call: function (name, params) {
       return req("POST", "/api/call/" + enc(name), { params: params || {} }).then(function (r) { return r.body; });
+    },
+    blob: {
+      url: function (key) { return "/api/blob?key=" + enc(key); },
+      put: function (key, data, contentType) {
+        return fetch("/api/blob?key=" + enc(key), {
+          method: "PUT",
+          headers: contentType ? { "content-type": contentType } : {},
+          body: data
+        }).then(function (res) {
+          if (!res.ok) throw new Error("Sites blob.put failed: " + res.status);
+          return res.json();
+        }).then(function (r) { return r.url; });
+      },
+      "delete": function (key) {
+        return req("DELETE", "/api/blob?key=" + enc(key)).then(function (r) { return r.deleted; });
+      }
     }
   };
 })();

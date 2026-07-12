@@ -32,6 +32,7 @@ import {
   type SiteVisibility,
 } from "@/lib/types";
 import { siteStore } from "@/lib/sites/data-db";
+import { removeSiteBlobs } from "@/lib/sites/blob";
 
 // ---------------------------------------------------------------------------
 // Row shapes (a Site with its versions loaded)
@@ -573,8 +574,10 @@ export async function deleteSite(
   await prisma.siteVersion.deleteMany({ where: { siteId } });
   await prisma.site.delete({ where: { id: siteId } });
   // Also drop the Site's mini-app data (isolated sites-data.db): config, KV,
-  // documents, usage, rate buckets — there is no cross-DB FK to cascade it.
+  // documents, usage, rate buckets, secrets, endpoints — no cross-DB FK — plus
+  // its on-disk blobs.
   await siteStore.purgeSite(siteId);
+  await removeSiteBlobs(siteId);
   return true;
 }
 
@@ -587,8 +590,11 @@ export async function deleteUserSites(prisma: PrismaClient, userId: string): Pro
   const sites = await prisma.site.findMany({ where: { userId }, select: { id: true } });
   await prisma.siteVersion.deleteMany({ where: { site: { userId } } });
   await prisma.site.deleteMany({ where: { userId } });
-  // Drop each Site's mini-app data from the isolated sites-data.db too.
-  for (const s of sites) await siteStore.purgeSite(s.id);
+  // Drop each Site's mini-app data (isolated sites-data.db) + on-disk blobs too.
+  for (const s of sites) {
+    await siteStore.purgeSite(s.id);
+    await removeSiteBlobs(s.id);
+  }
 }
 
 // ---------------------------------------------------------------------------

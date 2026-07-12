@@ -35,6 +35,14 @@ import { createHash } from "crypto";
 import { resolveBackendSite } from "@/lib/sites/gate";
 import { siteStore, SiteQuotaExceededError } from "@/lib/sites/data-db";
 import { invokeEndpoint } from "@/lib/sites/proxy";
+import {
+  contentTypeForKey,
+  deleteBlob,
+  getBlob,
+  MAX_BLOB_BYTES,
+  putBlob,
+  validBlobKey,
+} from "@/lib/sites/blob";
 import { sitesDomain, slugFromHost } from "@/lib/sites/origin";
 import {
   newVisitorToken,
@@ -78,6 +86,25 @@ function json(body: unknown, status = 200, setCookie?: string): Response {
   return new Response(JSON.stringify(body), { status, headers });
 }
 const notFound = () => json({ error: "not_found" }, 404);
+
+/**
+ * Serve stored blob bytes with the hostile-content header contract: nosniff +
+ * sandbox CSP always, an inert image type served inline, everything else forced
+ * to octet-stream + attachment (so a stored file can never render as an active
+ * document on the app origin).
+ */
+function blobResponse(key: string, data: Buffer): Response {
+  const { type, inline } = contentTypeForKey(key);
+  const headers: Record<string, string> = {
+    "content-type": type,
+    "content-security-policy": "sandbox; default-src 'none'",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "cache-control": "no-store",
+  };
+  if (!inline) headers["content-disposition"] = "attachment";
+  return new Response(new Uint8Array(data), { status: 200, headers });
+}
 
 /**
  * Resolve the per-visitor identity from the `sv` cookie, minting a fresh token +
@@ -198,6 +225,17 @@ export async function GET(req: Request, { params }: Params) {
   if ("deny" in r) return r.deny;
   const path = params.path ?? [];
 
+  // Blob download (hardened content-type; never rendered as a document). The key
+  // is a QUERY param, not a path segment, so an image-extension key like
+  // "photo.png" doesn't hit the middleware's static-asset matcher exclusion.
+  if (path[0] === "blob" && path.length === 1) {
+    const key = new URL(req.url).searchParams.get("key") ?? "";
+    if (!validBlobKey(key)) return json({ error: "bad_key" }, 400);
+    const data = await getBlob(r.siteId, key);
+    if (!data) return notFound();
+    return blobResponse(key, data);
+  }
+
   // Current account (null when anonymous).
   if (path[0] === "account" && path.length === 1) {
     const id = await getIdentity(req, r.siteId);
@@ -248,6 +286,20 @@ export async function PUT(req: Request, { params }: Params) {
   if ("deny" in r) return r.deny;
   const path = params.path ?? [];
 
+  // Blob upload: PUT /api/blob?key=<key> with the raw file bytes as the body.
+  if (path[0] === "blob" && path.length === 1) {
+    const key = new URL(req.url).searchParams.get("key") ?? "";
+    if (!validBlobKey(key)) return json({ error: "bad_key" }, 400);
+    const cl = Number(req.headers.get("content-length") ?? "0");
+    if (Number.isFinite(cl) && cl > MAX_BLOB_BYTES) return json({ error: "too_large" }, 413);
+    const limited = await rateGuard(req, r.siteId);
+    if (limited) return limited;
+    const buf = Buffer.from(await req.arrayBuffer());
+    const res = await putBlob(r.siteId, key, buf);
+    if (!res.ok) return json({ error: res.error }, res.code);
+    return json({ ok: true, url: `/api/blob?key=${encodeURIComponent(key)}` });
+  }
+
   // Resolve target: shared kv (/kv/c/k) or private per-visitor kv (/me/kv/c/k).
   const target = kvTarget(path);
   if (!target) return notFound();
@@ -282,6 +334,16 @@ export async function DELETE(req: Request, { params }: Params) {
   const r = await resolve(req, params);
   if ("deny" in r) return r.deny;
   const path = params.path ?? [];
+
+  // Blob delete: DELETE /api/blob?key=<key>.
+  if (path[0] === "blob" && path.length === 1) {
+    const key = new URL(req.url).searchParams.get("key") ?? "";
+    if (!validBlobKey(key)) return json({ error: "bad_key" }, 400);
+    const limited = await rateGuard(req, r.siteId);
+    if (limited) return limited;
+    const deleted = await deleteBlob(r.siteId, key);
+    return json({ ok: true, deleted });
+  }
 
   const target = kvTarget(path);
   if (!target) return notFound();
