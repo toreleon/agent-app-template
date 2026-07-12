@@ -1,0 +1,52 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - button "Close sidebar" [ref=e7] [cursor=pointer]
+          - button "Search chats" [ref=e10] [cursor=pointer]
+        - generic [ref=e14]:
+          - button "New chat" [ref=e15] [cursor=pointer]
+          - button "Projects" [ref=e19] [cursor=pointer]
+          - button "Scheduled" [ref=e22] [cursor=pointer]
+          - button "Artifacts" [ref=e27] [cursor=pointer]
+          - button "Sites" [ref=e38] [cursor=pointer]
+        - navigation [ref=e42]:
+          - paragraph [ref=e43]: No conversations yet
+        - button "U User" [ref=e47] [cursor=pointer]:
+          - generic [ref=e48]: U
+          - generic [ref=e49]: User
+      - separator "Resize sidebar" [ref=e50]
+    - generic [ref=e51]:
+      - banner [ref=e52]
+      - generic [ref=e55]:
+        - heading "What can I help with?" [level=1] [ref=e56]
+        - generic [ref=e57]:
+          - button "Write a thank-you note Write a warm thank-you note to a colleague who helped me ship a project." [ref=e58] [cursor=pointer]:
+            - generic [ref=e61]:
+              - generic [ref=e62]: Write a thank-you note
+              - generic [ref=e63]: Write a warm thank-you note to a colleague who helped me ship a project.
+          - button "Explain this code Explain what a debounce function does and show a TypeScript implementation." [ref=e64] [cursor=pointer]:
+            - generic [ref=e69]:
+              - generic [ref=e70]: Explain this code
+              - generic [ref=e71]: Explain what a debounce function does and show a TypeScript implementation.
+          - button "Brainstorm ideas Brainstorm 5 creative names for a productivity app for students." [ref=e72] [cursor=pointer]:
+            - generic [ref=e75]:
+              - generic [ref=e76]: Brainstorm ideas
+              - generic [ref=e77]: Brainstorm 5 creative names for a productivity app for students.
+          - button "Teach me something Explain how HTTPS works as if I were a curious beginner." [ref=e78] [cursor=pointer]:
+            - generic [ref=e82]:
+              - generic [ref=e83]: Teach me something
+              - generic [ref=e84]: Explain how HTTPS works as if I were a curious beginner.
+      - generic [ref=e86]:
+        - generic [ref=e87]:
+          - generic [ref=e88]:
+            - button "Attach files" [ref=e90] [cursor=pointer]
+            - textbox "Message ChatGPT" [ref=e93]
+            - button "Send message" [disabled] [ref=e94]
+          - button "GPT-5.4 mini Standard" [ref=e100] [cursor=pointer]:
+            - generic [ref=e101]: GPT-5.4 mini
+            - generic [ref=e102]: ·
+            - generic [ref=e103]: Standard
+        - paragraph [ref=e106]: ChatGPT can make mistakes. Check important info.
+  - alert [ref=e107]

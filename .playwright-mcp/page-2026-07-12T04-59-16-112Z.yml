@@ -1,0 +1,84 @@
+- generic [active] [ref=f23e1]:
+  - generic [ref=f23e2]:
+    - generic [ref=f23e3]:
+      - generic [ref=f23e5]:
+        - generic [ref=f23e6]:
+          - button "Close sidebar" [ref=f23e7] [cursor=pointer]
+          - button "Search chats" [ref=f23e10] [cursor=pointer]
+        - generic [ref=f23e14]:
+          - button "New chat" [ref=f23e15] [cursor=pointer]
+          - button "Projects" [ref=f23e19] [cursor=pointer]
+          - button "Scheduled" [ref=f23e22] [cursor=pointer]
+          - button "Artifacts" [ref=f23e27] [cursor=pointer]
+          - button "Sites" [ref=f23e38] [cursor=pointer]
+        - navigation [ref=f23e42]:
+          - generic [ref=f23e80]:
+            - generic [ref=f23e81]: Today
+            - list [ref=f23e82]:
+              - listitem [ref=f23e83]:
+                - button "Name one primary color. Answer with just the color word." [ref=f23e85] [cursor=pointer]
+              - listitem [ref=f23e94]:
+                - button "quantum computing basics" [ref=f23e96] [cursor=pointer]
+              - listitem [ref=f23e105]:
+                - button "the impact of AI on software jobs" [ref=f23e107] [cursor=pointer]
+              - listitem [ref=f23e116]:
+                - button "/pig-latin make this sentence fun" [ref=f23e118] [cursor=pointer]
+              - listitem [ref=f23e127]:
+                - button "/pdf-filler resolve me" [ref=f23e129] [cursor=pointer]
+              - listitem [ref=f23e138]:
+                - button "/pdf-filler resolve me" [ref=f23e140] [cursor=pointer]
+              - listitem [ref=f23e149]:
+                - button "/hidden-skill are you there? just say OK" [ref=f23e151] [cursor=pointer]
+              - listitem [ref=f23e160]:
+                - button "/manual-skill hello there" [ref=f23e162] [cursor=pointer]
+              - listitem [ref=f23e171]:
+                - button "/pig-latin good morning everyone" [ref=f23e173] [cursor=pointer]
+              - listitem [ref=f23e182]:
+                - button "Convert \"good morning\" to pig latin." [ref=f23e184] [cursor=pointer]
+          - generic [ref=f23e193]:
+            - generic [ref=f23e194]: Yesterday
+            - list [ref=f23e195]:
+              - listitem [ref=f23e196]:
+                - button "Write me a haiku about the ocean." [ref=f23e198] [cursor=pointer]
+              - listitem [ref=f23e207]:
+                - button "Please convert the phrase \"hello world\" into pig latin." [ref=f23e209] [cursor=pointer]
+        - button "P Play Tester" [ref=f23e218] [cursor=pointer]:
+          - generic [ref=f23e48]: P
+          - generic [ref=f23e49]: Play Tester
+      - separator "Resize sidebar" [ref=f23e50]
+    - generic [ref=f23e51]:
+      - banner [ref=f23e52]
+      - generic [ref=f23e55]:
+        - generic [ref=f23e279]:
+          - generic [ref=f23e280]: Name one primary color. Answer with just the color word.
+          - generic [ref=f23e281]:
+            - generic [ref=f23e282]:
+              - button "Previous version" [disabled] [ref=f23e283]
+              - generic [ref=f23e286]: 1/2
+              - button "Next version" [ref=f23e287] [cursor=pointer]
+            - generic [ref=f23e290]:
+              - button "Copy" [ref=f23e291] [cursor=pointer]
+              - button "Edit message" [ref=f23e295] [cursor=pointer]
+        - generic [ref=f23e339]:
+          - paragraph [ref=f23e341]: red
+          - generic [ref=f23e342]:
+            - generic [ref=f23e343]:
+              - button "Previous version" [ref=f23e344] [cursor=pointer]
+              - generic [ref=f23e347]: 2/2
+              - button "Next version" [disabled] [ref=f23e348]
+            - button "Copy" [ref=f23e351] [cursor=pointer]
+            - button "Good response" [ref=f23e355] [cursor=pointer]
+            - button "Bad response" [ref=f23e358] [cursor=pointer]
+            - button "Regenerate" [ref=f23e361] [cursor=pointer]
+      - generic [ref=f23e58]:
+        - generic [ref=f23e59]:
+          - generic [ref=f23e60]:
+            - button "Attach files" [ref=f23e62] [cursor=pointer]
+            - textbox "Message ChatGPT" [ref=f23e65]
+            - button "Send message" [disabled] [ref=f23e66]
+          - button "GPT-5.4 mini Standard" [ref=f23e72] [cursor=pointer]:
+            - generic [ref=f23e73]: GPT-5.4 mini
+            - generic [ref=f23e74]: ·
+            - generic [ref=f23e75]: Standard
+        - paragraph [ref=f23e78]: ChatGPT can make mistakes. Check important info.
+  - alert [ref=f23e79]

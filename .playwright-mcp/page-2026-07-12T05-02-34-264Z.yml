@@ -1,0 +1,132 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e107]
+  - generic [ref=e349]:
+    - generic [ref=e350]:
+      - generic [ref=e352]:
+        - generic [ref=e353]:
+          - button "Close sidebar" [ref=e354] [cursor=pointer]
+          - button "Search chats" [ref=e357] [cursor=pointer]
+        - generic [ref=e361]:
+          - button "New chat" [ref=e362] [cursor=pointer]
+          - button "Projects" [ref=e366] [cursor=pointer]
+          - button "Scheduled" [ref=e369] [cursor=pointer]
+          - button "Artifacts" [ref=e374] [cursor=pointer]
+          - button "Sites" [ref=e385] [cursor=pointer]
+        - navigation [ref=e389]:
+          - generic [ref=e390]:
+            - generic [ref=e391]: Today
+            - list [ref=e392]:
+              - listitem [ref=e393]:
+                - button "Build a simple, attractive \"coming soon\" landing page for a…" [ref=e395] [cursor=pointer]
+              - listitem [ref=e404]:
+                - button "Name one primary color. Answer with just the color word." [ref=e406] [cursor=pointer]
+              - listitem [ref=e415]:
+                - button "quantum computing basics" [ref=e417] [cursor=pointer]
+              - listitem [ref=e426]:
+                - button "the impact of AI on software jobs" [ref=e428] [cursor=pointer]
+              - listitem [ref=e437]:
+                - button "/pig-latin make this sentence fun" [ref=e439] [cursor=pointer]
+              - listitem [ref=e448]:
+                - button "/pdf-filler resolve me" [ref=e450] [cursor=pointer]
+              - listitem [ref=e459]:
+                - button "/pdf-filler resolve me" [ref=e461] [cursor=pointer]
+              - listitem [ref=e470]:
+                - button "/hidden-skill are you there? just say OK" [ref=e472] [cursor=pointer]
+              - listitem [ref=e481]:
+                - button "/manual-skill hello there" [ref=e483] [cursor=pointer]
+              - listitem [ref=e492]:
+                - button "/pig-latin good morning everyone" [ref=e494] [cursor=pointer]
+              - listitem [ref=e503]:
+                - button "Convert \"good morning\" to pig latin." [ref=e505] [cursor=pointer]
+          - generic [ref=e514]:
+            - generic [ref=e515]: Yesterday
+            - list [ref=e516]:
+              - listitem [ref=e517]:
+                - button "Write me a haiku about the ocean." [ref=e519] [cursor=pointer]
+              - listitem [ref=e528]:
+                - button "Please convert the phrase \"hello world\" into pig latin." [ref=e530] [cursor=pointer]
+        - button "P Play Tester" [ref=e542] [cursor=pointer]:
+          - generic [ref=e543]: P
+          - generic [ref=e544]: Play Tester
+      - separator "Resize sidebar" [ref=e545]
+    - main [ref=e546]:
+      - generic [ref=e547]:
+        - generic [ref=e548]:
+          - button "Sites" [ref=e549] [cursor=pointer]
+          - generic [ref=e552]: /
+          - heading "Nimbus Coming Soon" [level=1] [ref=e553]
+          - generic [ref=e554]: Draft
+          - generic [ref=e556]:
+            - button "Refine in chat" [ref=e557] [cursor=pointer]
+            - button "Save version" [ref=e560] [cursor=pointer]
+            - button "Deploy" [ref=e565] [cursor=pointer]
+        - iframe [ref=e572]:
+          - main [ref=f1e2]:
+            - generic [ref=f1e3]:
+              - generic [ref=f1e4]:
+                - link "Nimbus home" [ref=f1e5] [cursor=pointer]:
+                  - /url: "#"
+                  - text: Nimbus
+                - generic [ref=f1e7]: Smart notes, calm focus, coming soon
+                - heading "Notes that feel like clouds." [level=1] [ref=f1e9]: Notesthat feel like clouds.
+                - paragraph [ref=f1e10]: Nimbus is a beautifully simple note-taking app for capturing ideas, organizing thoughts, and finding what matters fast — with a distraction-free interface designed to keep you in flow.
+                - generic [ref=f1e11]:
+                  - generic "Email address" [ref=f1e12]:
+                    - textbox "Email address" [ref=f1e13]:
+                      - /placeholder: Enter your email for launch updates
+                  - button "Notify me" [ref=f1e14] [cursor=pointer]
+                - generic "Highlights" [ref=f1e15]:
+                  - generic [ref=f1e16]: Fast capture
+                  - generic [ref=f1e18]: Clean organization
+                  - generic [ref=f1e20]: Cross-device sync
+              - generic "Nimbus app preview" [ref=f1e22]:
+                - generic [ref=f1e23]:
+                  - generic [ref=f1e24]: Nimbus Preview
+                  - generic [ref=f1e30]:
+                    - generic [ref=f1e31]:
+                      - generic [ref=f1e32]:
+                        - generic [ref=f1e33]: Today’s Notes
+                        - generic [ref=f1e34]: A quiet place for big ideas
+                      - generic [ref=f1e35]: Synced
+                    - generic [ref=f1e36]:
+                      - generic [ref=f1e37]:
+                        - strong [ref=f1e38]: Launch idea
+                        - text: Build a notes app that gets out of the way — quick capture, instant search, and elegant reminders for the right moment.
+                      - generic [ref=f1e39]:
+                        - generic [ref=f1e40]: Projects
+                        - generic [ref=f1e44]: Ideas
+                        - generic [ref=f1e48]: Inbox
+                      - generic [ref=f1e52]:
+                        - generic [ref=f1e53]:
+                          - generic [ref=f1e54]: 1 tap
+                          - text: to capture thoughts
+                        - generic [ref=f1e55]:
+                          - generic [ref=f1e56]: 0 clutter
+                          - text: just focus
+                  - generic [ref=f1e57]: "New: command palette"
+                - generic [ref=f1e61]:
+                  - generic [ref=f1e62]: Built for writers, thinkers, and busy teams.
+                  - generic [ref=f1e63]: © Nimbus
+        - generic [ref=e573]:
+          - generic [ref=e574]: Preview of the current draft (html)
+          - button "Edit content" [ref=e575] [cursor=pointer]
+        - generic [ref=e576]:
+          - heading "Share" [level=2] [ref=e577]
+          - paragraph [ref=e578]: Sharing grants visit access only — visitors can never edit your site.
+          - generic [ref=e579]:
+            - button "Private Only you can preview it here" [ref=e580] [cursor=pointer]:
+              - generic [ref=e584]:
+                - generic [ref=e585]: Private
+                - generic [ref=e586]: Only you can preview it here
+            - button "Anyone with the link Anyone with the URL can open it — no sign-in" [ref=e589] [cursor=pointer]:
+              - generic [ref=e593]:
+                - generic [ref=e594]: Anyone with the link
+                - generic [ref=e595]: Anyone with the URL can open it — no sign-in
+            - button "Workspace Signed-in members (public serving to other users coming soon)" [ref=e596] [cursor=pointer]:
+              - generic [ref=e602]:
+                - generic [ref=e603]: Workspace
+                - generic [ref=e604]: Signed-in members (public serving to other users coming soon)
+        - generic [ref=e605]:
+          - heading "Versions" [level=2] [ref=e606]
+          - paragraph [ref=e607]: No versions saved yet. Click “Save version” to snapshot the current draft.
+        - button "Delete site" [ref=e609] [cursor=pointer]

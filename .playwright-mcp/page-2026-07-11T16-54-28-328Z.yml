@@ -1,0 +1,33 @@
+- generic [active] [ref=f24e1]:
+  - generic [ref=f24e2]:
+    - generic [ref=f24e3]:
+      - generic [ref=f24e5]:
+        - generic [ref=f24e6]:
+          - button "Close sidebar" [ref=f24e7] [cursor=pointer]
+          - button "Search chats" [ref=f24e10] [cursor=pointer]
+        - generic [ref=f24e14]:
+          - button "New chat" [ref=f24e15] [cursor=pointer]
+          - button "Projects" [ref=f24e19] [cursor=pointer]
+          - button "Scheduled" [ref=f24e22] [cursor=pointer]
+          - button "Artifacts" [ref=f24e27] [cursor=pointer]
+        - navigation [ref=f24e38]:
+          - paragraph [ref=f24e39]: No conversations yet
+        - button "U User" [ref=f24e43] [cursor=pointer]:
+          - generic [ref=f24e44]: U
+          - generic [ref=f24e45]: User
+      - separator "Resize sidebar" [ref=f24e46]
+    - generic [ref=f24e47]:
+      - banner [ref=f24e48]:
+        - button "GPT-5.4 mini" [ref=f24e51] [cursor=pointer]
+      - generic [ref=f24e59]:
+        - generic [ref=f24e60]:
+          - generic [ref=f24e61]:
+            - button "Attach files" [ref=f24e63] [cursor=pointer]
+            - textbox "Message ChatGPT" [ref=f24e66]
+            - button "Send message" [disabled] [ref=f24e67]
+          - generic [ref=f24e71]:
+            - button "GPT-5.4 mini" [ref=f24e74] [cursor=pointer]
+            - button "Standard" [ref=f24e79] [cursor=pointer]
+            - button "Deep research" [ref=f24e93] [cursor=pointer]
+        - paragraph [ref=f24e102]: ChatGPT can make mistakes. Check important info.
+  - alert [ref=f24e103]

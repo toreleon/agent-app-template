@@ -1,0 +1,73 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - generic [ref=f1e3]:
+      - generic [ref=f1e5]:
+        - generic [ref=f1e6]:
+          - button "Close sidebar" [ref=f1e7] [cursor=pointer]
+          - button "Search chats" [ref=f1e10] [cursor=pointer]
+        - generic [ref=f1e14]:
+          - button "New chat" [ref=f1e15] [cursor=pointer]
+          - button "Projects" [ref=f1e19] [cursor=pointer]
+          - button "Scheduled" [ref=f1e22] [cursor=pointer]
+          - button "Artifacts" [ref=f1e27] [cursor=pointer]
+        - navigation [ref=f1e38]:
+          - generic [ref=f1e39]:
+            - generic [ref=f1e40]: Today
+            - list [ref=f1e41]:
+              - listitem [ref=f1e42]:
+                - button "/pdf-filler resolve me" [ref=f1e44] [cursor=pointer]
+              - listitem [ref=f1e53]:
+                - button "/pdf-filler resolve me" [ref=f1e55] [cursor=pointer]
+              - listitem [ref=f1e64]:
+                - button "/hidden-skill are you there? just say OK" [ref=f1e66] [cursor=pointer]
+              - listitem [ref=f1e75]:
+                - button "/manual-skill hello there" [ref=f1e77] [cursor=pointer]
+              - listitem [ref=f1e86]:
+                - button "/pig-latin good morning everyone" [ref=f1e88] [cursor=pointer]
+              - listitem [ref=f1e97]:
+                - button "Convert \"good morning\" to pig latin." [ref=f1e99] [cursor=pointer]
+          - generic [ref=f1e108]:
+            - generic [ref=f1e109]: Yesterday
+            - list [ref=f1e110]:
+              - listitem [ref=f1e111]:
+                - button "Write me a haiku about the ocean." [ref=f1e113] [cursor=pointer]
+              - listitem [ref=f1e122]:
+                - button "Please convert the phrase \"hello world\" into pig latin." [ref=f1e124] [cursor=pointer]
+        - button "P Play Tester" [ref=f1e136] [cursor=pointer]:
+          - generic [ref=f1e137]: P
+          - generic [ref=f1e138]: Play Tester
+      - separator "Resize sidebar" [ref=f1e139]
+    - generic [ref=f1e140]:
+      - banner [ref=f1e141]:
+        - button "GPT-5.4 mini" [ref=f1e144] [cursor=pointer]
+      - generic [ref=f1e149]:
+        - heading "What can I help with?" [level=1] [ref=f1e150]
+        - generic [ref=f1e151]:
+          - button "Write a thank-you note Write a warm thank-you note to a colleague who helped me ship a project." [ref=f1e152] [cursor=pointer]:
+            - generic [ref=f1e155]:
+              - generic [ref=f1e156]: Write a thank-you note
+              - generic [ref=f1e157]: Write a warm thank-you note to a colleague who helped me ship a project.
+          - button "Explain this code Explain what a debounce function does and show a TypeScript implementation." [ref=f1e158] [cursor=pointer]:
+            - generic [ref=f1e163]:
+              - generic [ref=f1e164]: Explain this code
+              - generic [ref=f1e165]: Explain what a debounce function does and show a TypeScript implementation.
+          - button "Brainstorm ideas Brainstorm 5 creative names for a productivity app for students." [ref=f1e166] [cursor=pointer]:
+            - generic [ref=f1e169]:
+              - generic [ref=f1e170]: Brainstorm ideas
+              - generic [ref=f1e171]: Brainstorm 5 creative names for a productivity app for students.
+          - button "Teach me something Explain how HTTPS works as if I were a curious beginner." [ref=f1e172] [cursor=pointer]:
+            - generic [ref=f1e176]:
+              - generic [ref=f1e177]: Teach me something
+              - generic [ref=f1e178]: Explain how HTTPS works as if I were a curious beginner.
+      - generic [ref=f1e180]:
+        - generic [ref=f1e181]:
+          - generic [ref=f1e182]:
+            - button "Attach files" [ref=f1e184] [cursor=pointer]
+            - textbox "Message ChatGPT" [active] [ref=f1e187]: /pig-latin
+            - button "Send message" [ref=f1e188] [cursor=pointer]
+          - generic [ref=f1e192]:
+            - button "GPT-5.4 mini" [ref=f1e195] [cursor=pointer]
+            - button "Standard" [ref=f1e200] [cursor=pointer]
+            - button "Deep research" [ref=f1e214] [cursor=pointer]
+        - paragraph [ref=f1e223]: ChatGPT can make mistakes. Check important info.
+  - alert [ref=f1e224]

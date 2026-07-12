@@ -1,0 +1,97 @@
+- generic [active] [ref=e1]:
+  - alert [ref=e131]
+  - generic [ref=e306]:
+    - generic [ref=e307]:
+      - generic [ref=e309]:
+        - generic [ref=e310]:
+          - button "Close sidebar" [ref=e311] [cursor=pointer]
+          - button "Search chats" [ref=e314] [cursor=pointer]
+        - generic [ref=e318]:
+          - button "New chat" [ref=e319] [cursor=pointer]
+          - button "Projects" [ref=e323] [cursor=pointer]
+          - button "Scheduled" [ref=e326] [cursor=pointer]
+          - button "Artifacts" [ref=e331] [cursor=pointer]
+        - generic [ref=e342]:
+          - generic [ref=e343]:
+            - generic [ref=e344]: Projects
+            - button "New project" [ref=e345] [cursor=pointer]
+          - generic [ref=e348]:
+            - button "Expand project" [ref=e349] [cursor=pointer]
+            - button "Rust Learning" [ref=e352] [cursor=pointer]
+            - button "New chat in project" [ref=e358] [cursor=pointer]
+        - navigation [ref=e369]:
+          - generic [ref=e370]:
+            - generic [ref=e371]: Yesterday
+            - list [ref=e372]:
+              - listitem [ref=e373]:
+                - button "What's the best electric SUV to buy in 2026 for under…" [ref=e375] [cursor=pointer]
+              - listitem [ref=e384]:
+                - button "What are the best practices for onboarding new software…" [ref=e386] [cursor=pointer]
+              - listitem [ref=e395]:
+                - button "What's the best electric car to buy in 2026?" [ref=e397] [cursor=pointer]
+              - listitem [ref=e406]:
+                - button "Use the code tool to compute the sum 1+2+...+100, then give…" [ref=e408] [cursor=pointer]
+              - listitem [ref=e417]:
+                - button "Use the code tool to compute 987654 * 321, then tell me the…" [ref=e419] [cursor=pointer]
+              - listitem [ref=e428]:
+                - 'button "Please use your tools to do two things: first check the…" [ref=e430] [cursor=pointer]'
+              - listitem [ref=e439]:
+                - button "Use your workspace coding tools (write_file, run_shell,…" [ref=e441] [cursor=pointer]
+              - listitem [ref=e450]:
+                - button "Give me a haiku about autumn." [ref=e452] [cursor=pointer]
+              - listitem [ref=e461]:
+                - button "What is the capital of Japan? One word." [ref=e463] [cursor=pointer]
+              - listitem [ref=e472]:
+                - button "In Rust, how do I read a whole file into a String? Answer…" [ref=e474] [cursor=pointer]
+              - listitem [ref=e483]:
+                - button "Research the current state of passwordless authentication…" [ref=e485] [cursor=pointer]
+              - listitem [ref=e494]:
+                - button "New chat" [ref=e496] [cursor=pointer]
+              - listitem [ref=e505]:
+                - button "Create a clock with react" [ref=e507] [cursor=pointer]
+        - button "M Manual Tester" [ref=e519] [cursor=pointer]:
+          - generic [ref=e520]: M
+          - generic [ref=e521]: Manual Tester
+      - separator "Resize sidebar" [ref=e522]
+    - generic [ref=e523]:
+      - banner [ref=e524]:
+        - button "GPT-5.4 mini" [ref=e527] [cursor=pointer]
+      - generic [ref=e532]:
+        - generic [ref=e533]:
+          - generic [ref=e534]: In Rust, how do I read a whole file into a String? Answer briefly.
+          - button "Copy" [ref=e536] [cursor=pointer]
+        - generic [ref=e540]:
+          - generic [ref=e541]:
+            - paragraph [ref=e542]:
+              - text: Use
+              - code [ref=e543]: std::fs::read_to_string
+              - text: ":"
+            - generic [ref=e544]:
+              - generic [ref=e545]:
+                - generic [ref=e546]: rust
+                - button "Copy code" [ref=e547] [cursor=pointer]
+              - code [ref=e552]: use std::fs; let contents = fs::read_to_string("path/to/file.txt")?;
+            - paragraph [ref=e553]:
+              - text: It returns a
+              - code [ref=e554]: Result<String, std::io::Error>
+              - text: ", so use"
+              - code [ref=e555]: "?"
+              - text: in a function that returns
+              - code [ref=e556]: Result
+              - text: .
+          - generic [ref=e557]:
+            - button "Copy" [ref=e558] [cursor=pointer]
+            - button "Good response" [ref=e562] [cursor=pointer]
+            - button "Bad response" [ref=e565] [cursor=pointer]
+            - button "Regenerate" [ref=e568] [cursor=pointer]
+      - generic [ref=e576]:
+        - generic [ref=e577]:
+          - generic [ref=e578]:
+            - button "Attach files" [ref=e580] [cursor=pointer]
+            - textbox "Message ChatGPT" [ref=e583]
+            - button "Send message" [disabled] [ref=e584]
+          - generic [ref=e588]:
+            - button "GPT-5.4 mini" [ref=e591] [cursor=pointer]
+            - button "Standard" [ref=e596] [cursor=pointer]
+            - button "Deep research" [ref=e610] [cursor=pointer]
+        - paragraph [ref=e619]: ChatGPT can make mistakes. Check important info.

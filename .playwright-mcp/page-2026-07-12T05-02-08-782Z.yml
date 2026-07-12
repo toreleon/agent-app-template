@@ -1,0 +1,85 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - button "Close sidebar" [ref=e7] [cursor=pointer]
+          - button "Search chats" [ref=e10] [cursor=pointer]
+        - generic [ref=e14]:
+          - button "New chat" [ref=e15] [cursor=pointer]
+          - button "Projects" [ref=e19] [cursor=pointer]
+          - button "Scheduled" [ref=e22] [cursor=pointer]
+          - button "Artifacts" [ref=e27] [cursor=pointer]
+          - button "Sites" [ref=e38] [cursor=pointer]
+        - navigation [ref=e42]:
+          - generic [ref=e108]:
+            - generic [ref=e109]: Today
+            - list [ref=e110]:
+              - listitem [ref=e111]:
+                - button "Name one primary color. Answer with just the color word." [ref=e113] [cursor=pointer]
+              - listitem [ref=e122]:
+                - button "quantum computing basics" [ref=e124] [cursor=pointer]
+              - listitem [ref=e133]:
+                - button "the impact of AI on software jobs" [ref=e135] [cursor=pointer]
+              - listitem [ref=e144]:
+                - button "/pig-latin make this sentence fun" [ref=e146] [cursor=pointer]
+              - listitem [ref=e155]:
+                - button "/pdf-filler resolve me" [ref=e157] [cursor=pointer]
+              - listitem [ref=e166]:
+                - button "/pdf-filler resolve me" [ref=e168] [cursor=pointer]
+              - listitem [ref=e177]:
+                - button "/hidden-skill are you there? just say OK" [ref=e179] [cursor=pointer]
+              - listitem [ref=e188]:
+                - button "/manual-skill hello there" [ref=e190] [cursor=pointer]
+              - listitem [ref=e199]:
+                - button "/pig-latin good morning everyone" [ref=e201] [cursor=pointer]
+              - listitem [ref=e210]:
+                - button "Convert \"good morning\" to pig latin." [ref=e212] [cursor=pointer]
+          - generic [ref=e221]:
+            - generic [ref=e222]: Yesterday
+            - list [ref=e223]:
+              - listitem [ref=e224]:
+                - button "Write me a haiku about the ocean." [ref=e226] [cursor=pointer]
+              - listitem [ref=e235]:
+                - button "Please convert the phrase \"hello world\" into pig latin." [ref=e237] [cursor=pointer]
+        - button "P Play Tester" [ref=e246] [cursor=pointer]:
+          - generic [ref=e48]: P
+          - generic [ref=e49]: Play Tester
+      - separator "Resize sidebar" [ref=e50]
+    - generic [ref=e51]:
+      - banner [ref=e52]
+      - generic [ref=e249]:
+        - generic [ref=e250]:
+          - generic [ref=e251]: Build a simple, attractive "coming soon" landing page for a product called Nimbus (a note-taking app), and create it as a publishable Site using your site tools.
+          - generic [ref=e253]:
+            - button "Copy" [ref=e254] [cursor=pointer]
+            - button "Edit message" [disabled] [ref=e258]
+        - generic [ref=e262]:
+          - generic [ref=e263]:
+            - button "Thinking…" [expanded] [ref=e264]
+            - generic [ref=e279]:
+              - paragraph [ref=e280]:
+                - strong [ref=e281]: Planning landing page creation
+              - paragraph [ref=e282]:
+                - text: I need to create an attractive "coming soon" landing page for the Nimbus note-taking app. The user requested a publishable site, so I think using the create_site tool might be enough, and deploying it could come later if needed. I want to make the HTML self-contained with a nice gradient, an app mock-up, and possibly an email signup form. I'll ensure the page is responsive and well-designed. Let's call it "Nimbus Coming Soon."
+                - strong [ref=e283]: Deciding on deployment
+              - paragraph [ref=e284]: I’m thinking there might not be a need to deploy the site unless the user explicitly asks to share or publish it. Since a publishable site likely means the create_site draft can be deployed later, I can mention that a draft has been created, and we can deploy it if they want. For now, it seems best to proceed with the create_site tool. Let's move forward with that!
+          - button "Nimbus Coming Soon Built site · Draft · Manage in Sites" [ref=e297] [cursor=pointer]:
+            - generic [ref=e298]: Nimbus Coming Soon
+            - generic [ref=e299]: Built site · Draft · Manage in Sites
+          - generic:
+            - button "Copy"
+            - button "Good response"
+            - button "Bad response"
+      - generic [ref=e86]:
+        - generic [ref=e87]:
+          - generic [ref=e88]:
+            - button "Attach files" [disabled] [ref=e90]
+            - textbox "Message ChatGPT" [active] [ref=e93]
+            - button "Stop generating" [ref=e288] [cursor=pointer]
+          - button "GPT-5.4 mini Standard" [disabled] [ref=e100]:
+            - generic [ref=e101]: GPT-5.4 mini
+            - generic [ref=e102]: ·
+            - generic [ref=e103]: Standard
+        - paragraph [ref=e106]: ChatGPT can make mistakes. Check important info.
+  - alert [ref=e107]

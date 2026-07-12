@@ -1,0 +1,137 @@
+- generic [ref=f22e1]:
+  - generic [ref=f22e2]:
+    - generic [ref=f22e3]:
+      - generic [ref=f22e5]:
+        - generic [ref=f22e6]:
+          - button "Close sidebar" [ref=f22e7] [cursor=pointer]
+          - button "Search chats" [ref=f22e10] [cursor=pointer]
+        - generic [ref=f22e14]:
+          - button "New chat" [ref=f22e15] [cursor=pointer]
+          - button "Projects" [ref=f22e19] [cursor=pointer]
+          - button "Scheduled" [ref=f22e22] [cursor=pointer]
+          - button "Artifacts" [ref=f22e27] [cursor=pointer]
+        - generic [ref=f22e38]:
+          - generic [ref=f22e39]:
+            - generic [ref=f22e40]: Projects
+            - button "New project" [ref=f22e41] [cursor=pointer]
+          - generic [ref=f22e44]:
+            - button "Expand project" [ref=f22e45] [cursor=pointer]
+            - button "Rust Learning" [ref=f22e48] [cursor=pointer]
+            - button "New chat in project" [ref=f22e54] [cursor=pointer]
+        - navigation [ref=f22e65]:
+          - generic [ref=f22e66]:
+            - generic [ref=f22e67]: Today
+            - list [ref=f22e68]:
+              - listitem [ref=f22e69]:
+                - button "What's the best electric car to buy in 2026?" [ref=f22e71] [cursor=pointer]
+              - listitem [ref=f22e80]:
+                - button "Use the code tool to compute the sum 1+2+...+100, then give…" [ref=f22e82] [cursor=pointer]
+              - listitem [ref=f22e91]:
+                - button "Use the code tool to compute 987654 * 321, then tell me the…" [ref=f22e93] [cursor=pointer]
+              - listitem [ref=f22e102]:
+                - 'button "Please use your tools to do two things: first check the…" [ref=f22e104] [cursor=pointer]'
+              - listitem [ref=f22e113]:
+                - button "Use your workspace coding tools (write_file, run_shell,…" [ref=f22e115] [cursor=pointer]
+              - listitem [ref=f22e124]:
+                - button "Give me a haiku about autumn." [ref=f22e126] [cursor=pointer]
+              - listitem [ref=f22e135]:
+                - button "What is the capital of Japan? One word." [ref=f22e137] [cursor=pointer]
+              - listitem [ref=f22e146]:
+                - button "In Rust, how do I read a whole file into a String? Answer…" [ref=f22e148] [cursor=pointer]
+              - listitem [ref=f22e157]:
+                - button "Research the current state of passwordless authentication…" [ref=f22e159] [cursor=pointer]
+              - listitem [ref=f22e168]:
+                - button "New chat" [ref=f22e170] [cursor=pointer]
+              - listitem [ref=f22e179]:
+                - button "Create a clock with react" [ref=f22e181] [cursor=pointer]
+        - button "U User" [ref=f22e193] [cursor=pointer]:
+          - generic [ref=f22e194]: U
+          - generic [ref=f22e195]: User
+      - separator "Resize sidebar" [ref=f22e196]
+    - generic [ref=f22e197]:
+      - banner [ref=f22e198]:
+        - button "GPT-5.4 mini" [disabled] [ref=f22e201]
+      - generic [ref=f22e284]:
+        - generic [ref=f22e285]:
+          - generic [ref=f22e286]: What are the best practices for onboarding new software engineers at a startup?
+          - button "Copy" [ref=f22e288] [cursor=pointer]
+        - generic [ref=f22e292]:
+          - generic [ref=f22e293]:
+            - button "Thought for 1 second" [ref=f22e294] [cursor=pointer]
+            - generic [ref=f22e309]:
+              - paragraph [ref=f22e310]:
+                - strong [ref=f22e311]: Considering appropriate answers
+              - paragraph [ref=f22e312]: I need to provide a general answer that is concise yet helpful. I want to make sure I don't overcomplicate things or miss the mark on clarity. It's important to give the user valuable information without overwhelming them with details. I'll focus on being straightforward while still ensuring the response meets their needs. Simplicity is key, but I want to be thorough too. Let's see what I can come up with!
+          - generic [ref=f22e313]:
+            - paragraph [ref=f22e314]:
+              - text: Here are the
+              - strong [ref=f22e315]: best practices for onboarding new software engineers at a startup
+              - text: ", optimized for speed, clarity, and retention:"
+            - heading "1. Start before day one" [level=2] [ref=f22e316]
+            - list [ref=f22e317]:
+              - listitem [ref=f22e318]: Send equipment, accounts, and access in advance.
+              - listitem [ref=f22e319]:
+                - text: "Share a short welcome packet:"
+                - list [ref=f22e320]:
+                  - listitem [ref=f22e321]: company mission
+                  - listitem [ref=f22e322]: product overview
+                  - listitem [ref=f22e323]: org chart
+                  - listitem [ref=f22e324]: engineering stack
+                  - listitem [ref=f22e325]: first-week agenda
+              - listitem [ref=f22e326]: Make sure all tools work on day one.
+            - heading "2. Assign a clear onboarding buddy" [level=2] [ref=f22e327]
+            - list [ref=f22e328]:
+              - listitem [ref=f22e329]:
+                - text: Pair each new hire with a
+                - strong [ref=f22e330]: buddy
+                - text: or mentor.
+              - listitem [ref=f22e331]:
+                - text: "The buddy should help with:"
+                - list [ref=f22e332]:
+                  - listitem [ref=f22e333]: navigating the codebase
+                  - listitem [ref=f22e334]: unwritten norms
+                  - listitem [ref=f22e335]: finding the right people
+                  - listitem [ref=f22e336]: answering “small” questions safely
+            - heading "3. Define success for 30/60/90 days" [level=2] [ref=f22e337]
+            - list [ref=f22e338]:
+              - listitem [ref=f22e339]: Set concrete goals for each milestone.
+              - listitem [ref=f22e340]:
+                - text: "Examples:"
+                - list [ref=f22e341]:
+                  - listitem [ref=f22e342]:
+                    - strong [ref=f22e343]: "30 days:"
+                    - text: set up locally, understand systems, ship a small fix
+                  - listitem [ref=f22e344]:
+                    - strong [ref=f22e345]: "60 days:"
+                    - text: own a feature or service area
+                  - listitem [ref=f22e346]:
+                    - strong [ref=f22e347]: "90 days:"
+                    - text: deliver independently with minimal guidance
+              - listitem [ref=f22e348]: Keep expectations realistic for startup ambiguity.
+            - heading "4. Optimize for early wins" [level=2] [ref=f22e349]
+            - list [ref=f22e350]:
+              - listitem [ref=f22e351]:
+                - text: Give the new engineer a
+                - strong [ref=f22e352]: small but real task
+                - text: in the first week.
+              - listitem [ref=f22e353]:
+                - text: "Good starter tasks:"
+                - list [ref=f22e354]:
+                  - listitem [ref=f22e355]: bug fix
+                  - listitem [ref=f22e356]: test
+          - generic:
+            - button "Copy"
+            - button "Good response"
+            - button "Bad response"
+      - generic [ref=f22e237]:
+        - generic [ref=f22e238]:
+          - generic [ref=f22e239]:
+            - button "Attach files" [disabled] [ref=f22e241]
+            - textbox "Message ChatGPT" [ref=f22e244]
+            - button "Stop generating" [active] [ref=f22e359] [cursor=pointer]
+          - generic [ref=f22e249]:
+            - button "GPT-5.4 mini" [disabled] [ref=f22e252]
+            - button "Standard" [disabled] [ref=f22e257]
+            - button "Deep research" [disabled] [ref=f22e271]
+        - paragraph [ref=f22e280]: ChatGPT can make mistakes. Check important info.
+  - alert [ref=f22e281]

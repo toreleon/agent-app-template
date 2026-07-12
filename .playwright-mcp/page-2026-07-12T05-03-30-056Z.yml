@@ -1,0 +1,46 @@
+- main [ref=f2e2]:
+  - generic [ref=f2e3]:
+    - generic [ref=f2e4]:
+      - link "Nimbus home" [ref=f2e5] [cursor=pointer]:
+        - /url: "#"
+        - text: Nimbus
+      - generic [ref=f2e7]: Smart notes, calm focus, coming soon
+      - heading "Notes that feel like clouds." [level=1] [ref=f2e9]: Notesthat feel like clouds.
+      - paragraph [ref=f2e10]: Nimbus is a beautifully simple note-taking app for capturing ideas, organizing thoughts, and finding what matters fast — with a distraction-free interface designed to keep you in flow.
+      - generic [ref=f2e11]:
+        - generic "Email address" [ref=f2e12]:
+          - textbox "Email address" [ref=f2e13]:
+            - /placeholder: Enter your email for launch updates
+        - button "Notify me" [ref=f2e14] [cursor=pointer]
+      - generic "Highlights" [ref=f2e15]:
+        - generic [ref=f2e16]: Fast capture
+        - generic [ref=f2e18]: Clean organization
+        - generic [ref=f2e20]: Cross-device sync
+    - generic "Nimbus app preview" [ref=f2e22]:
+      - generic [ref=f2e23]:
+        - generic [ref=f2e24]: Nimbus Preview
+        - generic [ref=f2e30]:
+          - generic [ref=f2e31]:
+            - generic [ref=f2e32]:
+              - generic [ref=f2e33]: Today’s Notes
+              - generic [ref=f2e34]: A quiet place for big ideas
+            - generic [ref=f2e35]: Synced
+          - generic [ref=f2e36]:
+            - generic [ref=f2e37]:
+              - strong [ref=f2e38]: Launch idea
+              - text: Build a notes app that gets out of the way — quick capture, instant search, and elegant reminders for the right moment.
+            - generic [ref=f2e39]:
+              - generic [ref=f2e40]: Projects
+              - generic [ref=f2e44]: Ideas
+              - generic [ref=f2e48]: Inbox
+            - generic [ref=f2e52]:
+              - generic [ref=f2e53]:
+                - generic [ref=f2e54]: 1 tap
+                - text: to capture thoughts
+              - generic [ref=f2e55]:
+                - generic [ref=f2e56]: 0 clutter
+                - text: just focus
+        - generic [ref=f2e57]: "New: command palette"
+      - generic [ref=f2e61]:
+        - generic [ref=f2e62]: Built for writers, thinkers, and busy teams.
+        - generic [ref=f2e63]: © Nimbus

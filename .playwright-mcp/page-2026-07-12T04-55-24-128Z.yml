@@ -1,0 +1,52 @@
+- generic [active] [ref=f17e1]:
+  - generic [ref=f17e2]:
+    - generic [ref=f17e3]:
+      - generic [ref=f17e5]:
+        - generic [ref=f17e6]:
+          - button "Close sidebar" [ref=f17e7] [cursor=pointer]
+          - button "Search chats" [ref=f17e10] [cursor=pointer]
+        - generic [ref=f17e14]:
+          - button "New chat" [ref=f17e15] [cursor=pointer]
+          - button "Projects" [ref=f17e19] [cursor=pointer]
+          - button "Scheduled" [ref=f17e22] [cursor=pointer]
+          - button "Artifacts" [ref=f17e27] [cursor=pointer]
+          - button "Sites" [ref=f17e38] [cursor=pointer]
+        - navigation [ref=f17e42]:
+          - paragraph [ref=f17e43]: No conversations yet
+        - button "U User" [ref=f17e47] [cursor=pointer]:
+          - generic [ref=f17e48]: U
+          - generic [ref=f17e49]: User
+      - separator "Resize sidebar" [ref=f17e50]
+    - generic [ref=f17e51]:
+      - banner [ref=f17e52]
+      - generic [ref=f17e55]:
+        - heading "What can I help with?" [level=1] [ref=f17e56]
+        - generic [ref=f17e57]:
+          - button "Write a thank-you note Write a warm thank-you note to a colleague who helped me ship a project." [ref=f17e58] [cursor=pointer]:
+            - generic [ref=f17e61]:
+              - generic [ref=f17e62]: Write a thank-you note
+              - generic [ref=f17e63]: Write a warm thank-you note to a colleague who helped me ship a project.
+          - button "Explain this code Explain what a debounce function does and show a TypeScript implementation." [ref=f17e64] [cursor=pointer]:
+            - generic [ref=f17e69]:
+              - generic [ref=f17e70]: Explain this code
+              - generic [ref=f17e71]: Explain what a debounce function does and show a TypeScript implementation.
+          - button "Brainstorm ideas Brainstorm 5 creative names for a productivity app for students." [ref=f17e72] [cursor=pointer]:
+            - generic [ref=f17e75]:
+              - generic [ref=f17e76]: Brainstorm ideas
+              - generic [ref=f17e77]: Brainstorm 5 creative names for a productivity app for students.
+          - button "Teach me something Explain how HTTPS works as if I were a curious beginner." [ref=f17e78] [cursor=pointer]:
+            - generic [ref=f17e82]:
+              - generic [ref=f17e83]: Teach me something
+              - generic [ref=f17e84]: Explain how HTTPS works as if I were a curious beginner.
+      - generic [ref=f17e86]:
+        - generic [ref=f17e87]:
+          - generic [ref=f17e88]:
+            - button "Attach files" [ref=f17e90] [cursor=pointer]
+            - textbox "Message ChatGPT" [ref=f17e93]
+            - button "Send message" [disabled] [ref=f17e94]
+          - button "GPT-5.4 mini Standard" [ref=f17e100] [cursor=pointer]:
+            - generic [ref=f17e101]: GPT-5.4 mini
+            - generic [ref=f17e102]: ·
+            - generic [ref=f17e103]: Standard
+        - paragraph [ref=f17e106]: ChatGPT can make mistakes. Check important info.
+  - alert [ref=f17e107]

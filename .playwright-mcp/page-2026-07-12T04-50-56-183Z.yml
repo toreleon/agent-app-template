@@ -1,0 +1,35 @@
+- generic [ref=f14e2]:
+  - generic [ref=f14e3]:
+    - generic [ref=f14e5]:
+      - generic [ref=f14e6]:
+        - button "Close sidebar" [ref=f14e7]
+        - button "Search chats" [ref=f14e10]
+      - generic [ref=f14e14]:
+        - button "New chat" [ref=f14e15]
+        - button "Projects" [ref=f14e19]
+        - button "Scheduled" [ref=f14e22]
+        - button "Artifacts" [ref=f14e27]
+        - button "Sites" [ref=f14e38]
+      - navigation [ref=f14e42]:
+        - paragraph [ref=f14e43]: No conversations yet
+      - button "UUser" [ref=f14e47]
+    - separator "Resize sidebar"
+  - generic [ref=f14e48]:
+    - banner
+    - generic [ref=f14e51]:
+      - heading "What can I help with?" [level=1] [ref=f14e52]
+      - generic [ref=f14e53]:
+        - button "Write a thank-you noteWrite a warm thank-you note to a colleague who helped me ship a project." [ref=f14e54]
+        - button "Explain this codeExplain what a debounce function does and show a TypeScript implementation." [ref=f14e58]
+        - button "Brainstorm ideasBrainstorm 5 creative names for a productivity app for students." [ref=f14e64]
+        - button "Teach me somethingExplain how HTTPS works as if I were a curious beginner." [ref=f14e68]
+    - generic [ref=f14e74]:
+      - generic [ref=f14e75]:
+        - generic [ref=f14e76]:
+          - generic [ref=f14e77]:
+            - button [ref=f14e78]
+            - button "Attach files" [ref=f14e79]
+          - textbox "Message ChatGPT" [ref=f14e82]
+          - button "Send message" [disabled] [ref=f14e83]
+        - button "GPT-5.4 miniStandard" [ref=f14e89]: GPT-5.4 mini·Standard
+      - paragraph [ref=f14e92]: ChatGPT can make mistakes. Check important info.

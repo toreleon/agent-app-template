@@ -1,0 +1,312 @@
+- generic [ref=f22e1]:
+  - alert [ref=f22e281]
+  - generic [ref=f22e362]:
+    - generic [ref=f22e363]:
+      - generic [ref=f22e365]:
+        - generic [ref=f22e366]:
+          - button "Close sidebar" [ref=f22e367] [cursor=pointer]
+          - button "Search chats" [ref=f22e370] [cursor=pointer]
+        - generic [ref=f22e374]:
+          - button "New chat" [ref=f22e375] [cursor=pointer]
+          - button "Projects" [ref=f22e379] [cursor=pointer]
+          - button "Scheduled" [ref=f22e382] [cursor=pointer]
+          - button "Artifacts" [ref=f22e387] [cursor=pointer]
+        - generic [ref=f22e398]:
+          - generic [ref=f22e399]:
+            - generic [ref=f22e400]: Projects
+            - button "New project" [ref=f22e401] [cursor=pointer]
+          - generic [ref=f22e404]:
+            - button "Expand project" [ref=f22e405] [cursor=pointer]
+            - button "Rust Learning" [ref=f22e408] [cursor=pointer]
+            - button "New chat in project" [ref=f22e414] [cursor=pointer]
+        - navigation [ref=f22e425]:
+          - generic [ref=f22e426]:
+            - generic [ref=f22e427]: Today
+            - list [ref=f22e428]:
+              - listitem [ref=f22e429]:
+                - button "What are the best practices for onboarding new software…" [ref=f22e431] [cursor=pointer]
+              - listitem [ref=f22e440]:
+                - button "What's the best electric car to buy in 2026?" [ref=f22e442] [cursor=pointer]
+              - listitem [ref=f22e451]:
+                - button "Use the code tool to compute the sum 1+2+...+100, then give…" [ref=f22e453] [cursor=pointer]
+              - listitem [ref=f22e462]:
+                - button "Use the code tool to compute 987654 * 321, then tell me the…" [ref=f22e464] [cursor=pointer]
+              - listitem [ref=f22e473]:
+                - 'button "Please use your tools to do two things: first check the…" [ref=f22e475] [cursor=pointer]'
+              - listitem [ref=f22e484]:
+                - button "Use your workspace coding tools (write_file, run_shell,…" [ref=f22e486] [cursor=pointer]
+              - listitem [ref=f22e495]:
+                - button "Give me a haiku about autumn." [ref=f22e497] [cursor=pointer]
+              - listitem [ref=f22e506]:
+                - button "What is the capital of Japan? One word." [ref=f22e508] [cursor=pointer]
+              - listitem [ref=f22e517]:
+                - button "In Rust, how do I read a whole file into a String? Answer…" [ref=f22e519] [cursor=pointer]
+              - listitem [ref=f22e528]:
+                - button "Research the current state of passwordless authentication…" [ref=f22e530] [cursor=pointer]
+              - listitem [ref=f22e539]:
+                - button "New chat" [ref=f22e541] [cursor=pointer]
+              - listitem [ref=f22e550]:
+                - button "Create a clock with react" [ref=f22e552] [cursor=pointer]
+        - button "U User" [ref=f22e564] [cursor=pointer]:
+          - generic [ref=f22e565]: U
+          - generic [ref=f22e566]: User
+      - separator "Resize sidebar" [ref=f22e567]
+    - generic [ref=f22e568]:
+      - banner [ref=f22e569]:
+        - button "GPT-5.4 mini" [disabled] [ref=f22e572]
+      - generic [ref=f22e575]:
+        - generic [ref=f22e577]:
+          - generic [ref=f22e578]:
+            - generic [ref=f22e579]: What are the best practices for onboarding new software engineers at a startup?
+            - button "Copy" [ref=f22e581] [cursor=pointer]
+          - generic [ref=f22e585]:
+            - generic [ref=f22e586]:
+              - button "Thought for 1 second" [ref=f22e587] [cursor=pointer]
+              - generic [ref=f22e602]:
+                - paragraph [ref=f22e603]:
+                  - strong [ref=f22e604]: Considering appropriate answers
+                - paragraph [ref=f22e605]: I need to provide a general answer that is concise yet helpful. I want to make sure I don't overcomplicate things or miss the mark on clarity. It's important to give the user valuable information without overwhelming them with details. I'll focus on being straightforward while still ensuring the response meets their needs. Simplicity is key, but I want to be thorough too. Let's see what I can come up with!
+            - generic [ref=f22e606]:
+              - paragraph [ref=f22e607]:
+                - text: Here are the
+                - strong [ref=f22e608]: best practices for onboarding new software engineers at a startup
+                - text: ", optimized for speed, clarity, and retention:"
+              - heading "1. Start before day one" [level=2] [ref=f22e609]
+              - list [ref=f22e610]:
+                - listitem [ref=f22e611]: Send equipment, accounts, and access in advance.
+                - listitem [ref=f22e612]:
+                  - text: "Share a short welcome packet:"
+                  - list [ref=f22e613]:
+                    - listitem [ref=f22e614]: company mission
+                    - listitem [ref=f22e615]: product overview
+                    - listitem [ref=f22e616]: org chart
+                    - listitem [ref=f22e617]: engineering stack
+                    - listitem [ref=f22e618]: first-week agenda
+                - listitem [ref=f22e619]: Make sure all tools work on day one.
+              - heading "2. Assign a clear onboarding buddy" [level=2] [ref=f22e620]
+              - list [ref=f22e621]:
+                - listitem [ref=f22e622]:
+                  - text: Pair each new hire with a
+                  - strong [ref=f22e623]: buddy
+                  - text: or mentor.
+                - listitem [ref=f22e624]:
+                  - text: "The buddy should help with:"
+                  - list [ref=f22e625]:
+                    - listitem [ref=f22e626]: navigating the codebase
+                    - listitem [ref=f22e627]: unwritten norms
+                    - listitem [ref=f22e628]: finding the right people
+                    - listitem [ref=f22e629]: answering “small” questions safely
+              - heading "3. Define success for 30/60/90 days" [level=2] [ref=f22e630]
+              - list [ref=f22e631]:
+                - listitem [ref=f22e632]: Set concrete goals for each milestone.
+                - listitem [ref=f22e633]:
+                  - text: "Examples:"
+                  - list [ref=f22e634]:
+                    - listitem [ref=f22e635]:
+                      - strong [ref=f22e636]: "30 days:"
+                      - text: set up locally, understand systems, ship a small fix
+                    - listitem [ref=f22e637]:
+                      - strong [ref=f22e638]: "60 days:"
+                      - text: own a feature or service area
+                    - listitem [ref=f22e639]:
+                      - strong [ref=f22e640]: "90 days:"
+                      - text: deliver independently with minimal guidance
+                - listitem [ref=f22e641]: Keep expectations realistic for startup ambiguity.
+              - heading "4. Optimize for early wins" [level=2] [ref=f22e642]
+              - list [ref=f22e643]:
+                - listitem [ref=f22e644]:
+                  - text: Give the new engineer a
+                  - strong [ref=f22e645]: small but real task
+                  - text: in the first week.
+                - listitem [ref=f22e646]:
+                  - text: "Good starter tasks:"
+                  - list [ref=f22e647]:
+                    - listitem [ref=f22e648]: bug fix
+                    - listitem [ref=f22e649]: test improvement
+                    - listitem [ref=f22e650]: small feature behind a flag
+                    - listitem [ref=f22e651]: documentation cleanup
+                - listitem [ref=f22e652]: This builds confidence and reveals process gaps early.
+              - heading "5. Document the essentials" [level=2] [ref=f22e653]
+              - paragraph [ref=f22e654]: "Create lightweight docs for:"
+              - list [ref=f22e655]:
+                - listitem [ref=f22e656]: local dev setup
+                - listitem [ref=f22e657]: deployment process
+                - listitem [ref=f22e658]: architecture overview
+                - listitem [ref=f22e659]: coding standards
+                - listitem [ref=f22e660]: incident/on-call expectations
+                - listitem [ref=f22e661]: how decisions are made
+              - paragraph [ref=f22e662]: At startups, onboarding often fails because knowledge is tribal.
+              - heading "6. Make the codebase approachable" [level=2] [ref=f22e663]
+              - list [ref=f22e664]:
+                - listitem [ref=f22e665]: Keep services and repos organized.
+                - listitem [ref=f22e666]: Use clear README files.
+                - listitem [ref=f22e667]: Add comments where complexity is unavoidable.
+                - listitem [ref=f22e668]: Prefer consistent patterns over “clever” code.
+                - listitem [ref=f22e669]: Make it easy to run tests, lint, and start the app locally.
+              - heading "7. Introduce the product, not just the code" [level=2] [ref=f22e670]
+              - paragraph [ref=f22e671]: "Engineers onboard faster when they understand:"
+              - list [ref=f22e672]:
+                - listitem [ref=f22e673]: the customer
+                - listitem [ref=f22e674]: the pain point
+                - listitem [ref=f22e675]: why the product exists
+                - listitem [ref=f22e676]: how success is measured
+                - listitem [ref=f22e677]: the biggest business priorities
+              - paragraph [ref=f22e678]: Context helps them make better technical decisions.
+              - heading "8. Schedule structured check-ins" [level=2] [ref=f22e679]
+              - paragraph [ref=f22e680]: "Use regular touchpoints:"
+              - list [ref=f22e681]:
+                - listitem [ref=f22e682]: day 1
+                - listitem [ref=f22e683]: end of week 1
+                - listitem [ref=f22e684]: weekly for the first month
+                - listitem [ref=f22e685]: biweekly after that
+              - paragraph [ref=f22e686]: "Ask:"
+              - list [ref=f22e687]:
+                - listitem [ref=f22e688]: What’s confusing?
+                - listitem [ref=f22e689]: What’s blocked?
+                - listitem [ref=f22e690]: What do you wish were documented?
+                - listitem [ref=f22e691]: Do you feel productive?
+              - heading "9. Minimize unnecessary process, but don’t skip process entirely" [level=2] [ref=f22e692]
+              - paragraph [ref=f22e693]: "Startups should avoid bureaucracy, but new hires still need:"
+              - list [ref=f22e694]:
+                - listitem [ref=f22e695]: access requests handled quickly
+                - listitem [ref=f22e696]: code review expectations
+                - listitem [ref=f22e697]: branch/deploy workflow
+                - listitem [ref=f22e698]: Slack/communication norms
+                - listitem [ref=f22e699]: incident escalation path
+              - paragraph [ref=f22e700]: A little structure reduces friction a lot.
+              - heading "10. Encourage psychological safety" [level=2] [ref=f22e701]
+              - paragraph [ref=f22e702]: "New engineers should feel comfortable saying:"
+              - list [ref=f22e703]:
+                - listitem [ref=f22e704]: “I don’t know”
+                - listitem [ref=f22e705]: “I’m blocked”
+                - listitem [ref=f22e706]: “This seems wrong”
+                - listitem [ref=f22e707]: “I need context”
+              - paragraph [ref=f22e708]: If people fear looking slow, they’ll waste time guessing.
+              - heading "11. Involve the team, not just the manager" [level=2] [ref=f22e709]
+              - paragraph [ref=f22e710]: "Helpful onboarding is a team effort:"
+              - list [ref=f22e711]:
+                - listitem [ref=f22e712]: "manager: goals and feedback"
+                - listitem [ref=f22e713]: "buddy: day-to-day support"
+                - listitem [ref=f22e714]: "teammates: context and code walkthroughs"
+                - listitem [ref=f22e715]: "product/design/data partners: domain understanding"
+              - heading "12. Measure onboarding quality" [level=2] [ref=f22e716]
+              - paragraph [ref=f22e717]: "Track:"
+              - list [ref=f22e718]:
+                - listitem [ref=f22e719]: time to first commit
+                - listitem [ref=f22e720]: time to first production deploy
+                - listitem [ref=f22e721]: ramp time to independent ownership
+                - listitem [ref=f22e722]: new hire satisfaction
+                - listitem [ref=f22e723]: common blockers
+              - paragraph [ref=f22e724]: Then improve the onboarding process continuously.
+              - separator [ref=f22e725]
+              - heading "A simple startup onboarding template" [level=2] [ref=f22e726]
+              - paragraph [ref=f22e727]:
+                - strong [ref=f22e728]: Before day 1
+              - list [ref=f22e729]:
+                - listitem [ref=f22e730]: accounts/access ready
+                - listitem [ref=f22e731]: laptop shipped
+                - listitem [ref=f22e732]: welcome doc sent
+              - paragraph [ref=f22e733]:
+                - strong [ref=f22e734]: Week 1
+              - list [ref=f22e735]:
+                - listitem [ref=f22e736]: meet team
+                - listitem [ref=f22e737]: set up dev environment
+                - listitem [ref=f22e738]: review architecture/product
+                - listitem [ref=f22e739]: ship a small change
+              - paragraph [ref=f22e740]:
+                - strong [ref=f22e741]: Weeks 2–4
+              - list [ref=f22e742]:
+                - listitem [ref=f22e743]: pair on a real feature
+                - listitem [ref=f22e744]: attend relevant meetings
+                - listitem [ref=f22e745]: learn release/debugging workflow
+              - paragraph [ref=f22e746]:
+                - strong [ref=f22e747]: Days 30–90
+              - list [ref=f22e748]:
+                - listitem [ref=f22e749]: own a project area
+                - listitem [ref=f22e750]: participate in design reviews
+                - listitem [ref=f22e751]: handle production issues with support
+                - listitem [ref=f22e752]: get formal feedback
+              - separator [ref=f22e753]
+              - heading "Biggest mistakes to avoid" [level=2] [ref=f22e754]
+              - list [ref=f22e755]:
+                - listitem [ref=f22e756]: expecting productivity immediately
+                - listitem [ref=f22e757]: no clear first task
+                - listitem [ref=f22e758]: poor documentation
+                - listitem [ref=f22e759]: unclear ownership
+                - listitem [ref=f22e760]: too much context dumped at once
+                - listitem [ref=f22e761]: leaving the new hire alone to “figure it out”
+              - paragraph [ref=f22e762]: "If you want, I can also give you:"
+              - list [ref=f22e763]:
+                - listitem [ref=f22e764]:
+                  - text: a
+                  - strong [ref=f22e765]: startup onboarding checklist
+                  - text: ","
+                - listitem [ref=f22e766]:
+                  - text: a
+                  - strong [ref=f22e767]: 30/60/90 plan template
+                  - text: ", or"
+                - listitem [ref=f22e768]:
+                  - text: a
+                  - strong [ref=f22e769]: new engineer onboarding doc outline
+                  - text: .
+            - generic [ref=f22e770]:
+              - button "Copy" [ref=f22e771] [cursor=pointer]
+              - button "Good response" [ref=f22e775] [cursor=pointer]
+              - button "Bad response" [ref=f22e778] [cursor=pointer]
+          - generic [ref=f22e833]:
+            - generic [ref=f22e834]: A ~15-person remote-first startup, hiring engineers with 2-4 years experience. Focus on the first 90 days and give a concrete checklist.
+            - button "Copy" [ref=f22e836] [cursor=pointer]
+          - generic [ref=f22e840]:
+            - generic [ref=f22e841]:
+              - button "Thought for 1 second" [ref=f22e842] [cursor=pointer]
+              - generic [ref=f22e857]:
+                - paragraph [ref=f22e858]:
+                  - strong [ref=f22e859]: Creating a checklist for onboarding
+                - paragraph [ref=f22e860]: I need to create an answer without using tools. I'll focus on tailoring it for a remote-first startup with around 15 people, specifically for those with 2-4 years of experience. The goal is to outline a concrete checklist for the first 90 days, incorporating roles and cadence. I want to ensure it's concise yet useful, so I’ll carefully plan the steps and specifics. Let’s make this really effective for their onboarding experience!
+            - generic [ref=f22e861]:
+              - paragraph [ref=f22e862]:
+                - text: Here’s a
+                - strong [ref=f22e863]: concrete 90-day onboarding checklist
+                - text: for a
+                - strong [ref=f22e864]: ~15-person remote-first startup
+                - text: hiring engineers with
+                - strong [ref=f22e865]: 2–4 years of experience
+                - text: .
+              - paragraph [ref=f22e866]: "The goal is to get them to:"
+              - list [ref=f22e867]:
+                - listitem [ref=f22e868]: understand the product and codebase
+                - listitem [ref=f22e869]: ship small real work quickly
+                - listitem [ref=f22e870]: become independently productive by ~90 days
+                - listitem [ref=f22e871]: build trust in a remote environment
+              - separator [ref=f22e872]
+              - heading "90-day onboarding checklist" [level=1] [ref=f22e873]
+              - heading "Core principles" [level=2] [ref=f22e874]
+              - list [ref=f22e875]:
+                - listitem [ref=f22e876]:
+                  - strong [ref=f22e877]: "One owner:"
+                  - text: manager owns onboarding
+                - listitem [ref=f22e878]:
+                  - strong [ref=f22e879]: "One buddy:"
+                  - text: day-to-day help
+                - listitem [ref=f22e880]:
+                  - strong [ref=f22e881]: "One first project:"
+                  - text: small, real, and shippable
+                - listitem [ref=f22e882]:
+                  - strong [ref=f22e883]: "One source of truth:"
+                  - text: a written
+            - generic:
+              - button "Copy"
+              - button "Good response"
+              - button "Bad response"
+        - button "Scroll to bottom" [ref=f22e885] [cursor=pointer]
+      - generic [ref=f22e789]:
+        - generic [ref=f22e790]:
+          - generic [ref=f22e791]:
+            - button "Attach files" [disabled] [ref=f22e793]
+            - textbox "Message ChatGPT" [ref=f22e796]
+            - button "Stop generating" [active] [ref=f22e888] [cursor=pointer]
+          - generic [ref=f22e801]:
+            - button "GPT-5.4 mini" [disabled] [ref=f22e804]
+            - button "Standard" [disabled] [ref=f22e809]
+            - button "Deep research" [disabled] [ref=f22e823]
+        - paragraph [ref=f22e832]: ChatGPT can make mistakes. Check important info.
