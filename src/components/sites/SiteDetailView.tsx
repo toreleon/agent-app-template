@@ -18,6 +18,7 @@ import {
   type SiteVisibility,
 } from "@/lib/types";
 import { SitePreviewFrame } from "./SitePreviewFrame";
+import { SiteBackendPanel } from "./SiteBackendPanel";
 import { SiteStatusBadge, VISIBILITY_LABEL, VISIBILITY_ICON } from "./siteVisuals";
 
 function timeAgo(iso: string): string {
@@ -278,6 +279,9 @@ export function SiteDetailView({ siteId }: { siteId: string }) {
             </button>
           )}
         </section>
+
+        {/* Backend (mini-app: data, secrets, endpoints) */}
+        <SiteBackendPanel siteId={siteId} />
 
         {/* Versions */}
         <section className="mt-8">

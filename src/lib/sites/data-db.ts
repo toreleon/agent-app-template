@@ -435,6 +435,44 @@ export const siteStore = {
     });
   },
 
+  // ---- Owner-side data moderation (for the /sites/[id] dashboard) ----
+
+  /** All KV rows for a Site (owner view). */
+  async listKVRows(siteId: string) {
+    return sitesDataDb.siteKV.findMany({
+      where: { siteId },
+      orderBy: [{ collection: "asc" }, { key: "asc" }],
+      select: { collection: true, key: true, scope: true, value: true, updatedAt: true },
+      take: 500,
+    });
+  },
+
+  /** Recent document rows for a Site (owner view + moderation). */
+  async listDocumentRows(siteId: string) {
+    return sitesDataDb.siteDocument.findMany({
+      where: { siteId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, collection: true, data: true, createdAt: true },
+      take: 500,
+    });
+  },
+
+  /** Delete one document by id (owner moderation). */
+  async deleteDocument(siteId: string, id: string): Promise<boolean> {
+    const res = await sitesDataDb.siteDocument.deleteMany({ where: { id, siteId } });
+    return res.count > 0;
+  },
+
+  /** Account list for the owner (usernames + created), never password hashes. */
+  async listAccounts(siteId: string) {
+    return sitesDataDb.siteAccount.findMany({
+      where: { siteId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, username: true, createdAt: true },
+      take: 500,
+    });
+  },
+
   /** Delete ALL data for a Site (called from the app-side Site delete cascade). */
   async purgeSite(siteId: string): Promise<void> {
     await sitesDataDb.$transaction([
