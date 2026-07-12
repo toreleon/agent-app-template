@@ -11,6 +11,7 @@ import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { EmptyState } from "./EmptyState";
 import { ArtifactPanel } from "@/components/artifacts/ArtifactPanel";
+import { WorkspacePanel } from "@/components/workspace/WorkspacePanel";
 import { cn } from "@/components/ui/cn";
 
 export interface ChatAppProps {
@@ -50,6 +51,10 @@ export function ChatApp({ conversationId }: ChatAppProps) {
   const error = useChatStore((s) => s.error);
   const messagesLoading = useChatStore((s) => s.messagesLoading);
   const openArtifactId = useChatStore((s) => s.openArtifactId);
+  const workspaceView = useChatStore((s) => s.workspaceView);
+  // The artifact and workspace panes share the resizable right slot and are
+  // mutually exclusive (enforced in the store).
+  const rightPaneOpen = !!openArtifactId || !!workspaceView;
   const activeProjectId = useChatStore((s) => s.activeProjectId);
 
   const projects = useProjectStore((s) => s.projects);
@@ -121,7 +126,7 @@ export function ChatApp({ conversationId }: ChatAppProps) {
   useEffect(() => {
     const constrainWidths = () => {
       const viewportWidth = window.innerWidth;
-      const artifactSpace = openArtifactId ? artifactWidth : 0;
+      const artifactSpace = rightPaneOpen ? artifactWidth : 0;
       setSidebarWidth((width) =>
         clamp(
           width,
@@ -129,7 +134,7 @@ export function ChatApp({ conversationId }: ChatAppProps) {
           Math.min(SIDEBAR_MAX_WIDTH, viewportWidth - artifactSpace - CHAT_MIN_WIDTH),
         ),
       );
-      if (openArtifactId) {
+      if (rightPaneOpen) {
         setArtifactWidth((width) =>
           clamp(
             width,
@@ -146,7 +151,7 @@ export function ChatApp({ conversationId }: ChatAppProps) {
     constrainWidths();
     window.addEventListener("resize", constrainWidths);
     return () => window.removeEventListener("resize", constrainWidths);
-  }, [artifactWidth, openArtifactId, sidebarOpen, sidebarWidth]);
+  }, [artifactWidth, rightPaneOpen, sidebarOpen, sidebarWidth]);
 
   const hasMessages = messages.length > 0;
 
@@ -163,7 +168,7 @@ export function ChatApp({ conversationId }: ChatAppProps) {
     document.body.classList.add("select-none");
 
     const onMove = (moveEvent: PointerEvent) => {
-      const artifactSpace = openArtifactId ? artifactWidth : 0;
+      const artifactSpace = rightPaneOpen ? artifactWidth : 0;
       setSidebarWidth(
         clamp(
           startWidth + moveEvent.clientX - startX,
@@ -319,6 +324,28 @@ export function ChatApp({ conversationId }: ChatAppProps) {
       {openArtifactId && (
         <div className="fixed inset-0 z-40 bg-main lg:hidden">
           <ArtifactPanel />
+        </div>
+      )}
+
+      {/* Workspace (coding diff) panel: shares the resizable right slot. */}
+      {workspaceView && (
+        <div
+          className="relative hidden h-full shrink-0 border-l border-border/60 lg:flex"
+          style={{ width: artifactWidth }}
+        >
+          <div
+            role="separator"
+            aria-label="Resize workspace panel"
+            aria-orientation="vertical"
+            onPointerDown={startArtifactResize}
+            className="absolute -left-1 top-0 z-20 h-full w-2 cursor-col-resize touch-none hover:bg-accent/20"
+          />
+          <WorkspacePanel />
+        </div>
+      )}
+      {workspaceView && (
+        <div className="fixed inset-0 z-40 bg-main lg:hidden">
+          <WorkspacePanel />
         </div>
       )}
     </div>

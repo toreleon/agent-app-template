@@ -12,10 +12,16 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
-import type { MessageItemProps, Attachment, ChatMessage } from "@/lib/types";
+import type {
+  MessageItemProps,
+  Attachment,
+  ChatMessage,
+  ToolCallRecord,
+} from "@/lib/types";
 import { Markdown } from "@/components/markdown/Markdown";
 import { ArtifactChip } from "@/components/artifacts/ArtifactChip";
 import { SiteChip } from "@/components/sites/SiteChip";
+import { DiffStatsBadge } from "@/components/workspace/DiffStatsBadge";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ResearchActivity } from "./ResearchActivity";
 import { SubagentActivity } from "./SubagentActivity";
@@ -24,6 +30,16 @@ import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/components/ui/cn";
 
 const MAX_EDIT_TEXTAREA_HEIGHT = 320;
+
+/** True when a message's tool calls include a file-writing tool, so we should
+ *  offer a diff-stats badge for that turn (the badge self-hides if the turn
+ *  produced no net change). */
+function touchedFiles(toolCalls: ToolCallRecord[] | undefined): boolean {
+  return (
+    !!toolCalls &&
+    toolCalls.some((t) => t.name === "write_file" || t.name === "edit_file")
+  );
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -272,6 +288,11 @@ export function MessageItem({
           {message.siteRefs.map((ref, i) => (
             <SiteChip key={`${ref.siteId}-${ref.command}-${i}`} siteRef={ref} />
           ))}
+        </div>
+      )}
+      {!isUser && touchedFiles(message.toolCalls) && (
+        <div className="my-2">
+          <DiffStatsBadge messageId={message.id} />
         </div>
       )}
       <div

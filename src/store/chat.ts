@@ -18,6 +18,7 @@ import type {
   TraceItem,
 } from "@/lib/types";
 import { DEFAULT_MODEL, DEFAULT_EFFORT } from "@/lib/types";
+import type { WorkspaceScope } from "@/lib/workspace/types";
 import type { ReasoningEffort } from "@/lib/types";
 import { extractToolArg } from "@/lib/toolActivity";
 import { parseSSE } from "@/lib/sse";
@@ -92,6 +93,11 @@ export interface ChatState {
   /** Selected version to display; null means "follow the latest version". */
   openArtifactVersion: number | null;
 
+  // ---- coding workspace (diff review pane) ----
+  /** The open coding-workspace review pane, or null when closed. Mutually
+   *  exclusive with openArtifactId — only one right pane shows at a time. */
+  workspaceView: { scope: WorkspaceScope; messageId: string | null } | null;
+
   // ---- ui / status ----
   conversationsLoading: boolean;
   messagesLoading: boolean;
@@ -131,6 +137,16 @@ export interface ChatState {
   closeArtifact: () => void;
   /** Show a specific version of the open artifact (null = latest). */
   setArtifactVersion: (version: number | null) => void;
+  /** Open the coding-workspace review pane (diff viewer), optionally scoped to a
+   *  single assistant turn's changes. */
+  openWorkspace: (opts?: {
+    scope?: WorkspaceScope;
+    messageId?: string | null;
+  }) => void;
+  /** Close the coding-workspace review pane. */
+  closeWorkspace: () => void;
+  /** Switch review scope (all changes vs a single turn). */
+  setWorkspaceScope: (scope: WorkspaceScope, messageId?: string | null) => void;
   sendMessage: (
     text: string,
     attachments: Attachment[],
@@ -178,6 +194,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   artifacts: [],
   openArtifactId: null,
   openArtifactVersion: null,
+  workspaceView: null,
 
   conversationsLoading: false,
   messagesLoading: false,
@@ -217,6 +234,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       artifacts: [],
       openArtifactId: null,
       openArtifactVersion: null,
+      workspaceView: null,
     });
     try {
       const res = await fetch(`/api/conversations/${id}`, { cache: "no-store" });
@@ -251,6 +269,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       artifacts: [],
       openArtifactId: null,
       openArtifactVersion: null,
+      workspaceView: null,
       activeProjectId: projectId ?? null,
       // Deep Research is per-request, not a persistent conversation mode — don't
       // leak it into a fresh chat (which would silently start the clarify flow).
@@ -328,6 +347,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({
       openArtifactId: artifactId,
       openArtifactVersion: version ?? null,
+      // Only one right pane at a time.
+      workspaceView: null,
     });
   },
 
@@ -337,6 +358,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setArtifactVersion: (version) => {
     set({ openArtifactVersion: version });
+  },
+
+  openWorkspace: (opts) => {
+    set({
+      workspaceView: {
+        scope: opts?.scope ?? "all",
+        messageId: opts?.messageId ?? null,
+      },
+      // Mutually exclusive with the artifact pane.
+      openArtifactId: null,
+      openArtifactVersion: null,
+    });
+  },
+
+  closeWorkspace: () => {
+    set({ workspaceView: null });
+  },
+
+  setWorkspaceScope: (scope, messageId) => {
+    set((s) =>
+      s.workspaceView
+        ? {
+            workspaceView: {
+              scope,
+              messageId:
+                messageId !== undefined
+                  ? messageId
+                  : scope === "all"
+                    ? null
+                    : s.workspaceView.messageId,
+            },
+          }
+        : s,
+    );
   },
 
   sendMessage: async (text, attachments, options) => {
@@ -579,7 +634,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       if (wasCurrent) {
-        set({ currentId: null, messages: [], activeLeafId: null });
+        set({
+          currentId: null,
+          messages: [],
+          activeLeafId: null,
+          openArtifactId: null,
+          openArtifactVersion: null,
+          workspaceView: null,
+        });
         if (typeof window !== "undefined") {
           window.history.replaceState(null, "", "/");
         }
@@ -826,6 +888,8 @@ function applyEvent(
           messages,
           openArtifactId: snap.id,
           openArtifactVersion: null,
+          // Keep the right pane single: close the workspace pane if it was open.
+          workspaceView: null,
         };
       });
       break;
