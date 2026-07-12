@@ -140,6 +140,40 @@ export async function snapshotTurn(
 }
 
 /**
+ * Count files changed going from snapshot `fromSha` to `toSha` (i.e. the effect
+ * of restoring to `toSha` when the current tree is `fromSha`): deletions vs the
+ * rest (add/modify/rename). Accurate across branches and for run_shell-created
+ * files — unlike a replay-based count. Read-only; returns null on failure.
+ */
+export async function changeCountBetween(
+  conversationId: string,
+  fromSha: string,
+  toSha: string,
+): Promise<{ restored: number; deleted: number } | null> {
+  try {
+    const { realRoot } = getWorkspace(conversationId);
+    const gitDir = snapDirFor(realRoot);
+    const out = await git(gitDir, realRoot, [
+      "diff",
+      "--name-status",
+      fromSha,
+      toSha,
+    ]);
+    let restored = 0;
+    let deleted = 0;
+    for (const line of out.split("\n")) {
+      const c = line.trim()[0];
+      if (!c) continue;
+      if (c === "D") deleted++;
+      else restored++;
+    }
+    return { restored, deleted };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Byte-exactly restore the workspace to snapshot `sha`: `reset --hard` (tracked
  * files match the snapshot; files added after it are removed) then `clean -fd`
  * (drop untracked, non-ignored files). Returns false if the sha is unknown or

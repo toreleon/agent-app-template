@@ -22,7 +22,7 @@ import { isConversationOwner, loadWorkspaceOps } from "./load";
 import { replay } from "./replay";
 import { readWorkspaceTree } from "./tree";
 import { getSnapshotSha } from "./checkpoints";
-import { snapshotTurn, restoreTo } from "./snapshot";
+import { snapshotTurn, restoreTo, changeCountBetween } from "./snapshot";
 
 export interface RestoreResult {
   ok: boolean;
@@ -127,11 +127,18 @@ export async function restoreWorkspaceTo(
   // Faithful path: a real snapshot exists → git reset --hard + clean.
   const sha = await getSnapshotSha(targetMessageId);
   if (sha && (await restoreTo(conversationId, sha))) {
+    // Count from the git diff between the pre-restore snapshot and the target —
+    // accurate across branches + for run_shell files (the replay counts above
+    // only see the active branch's tracked files). Fall back to replay counts.
+    const counts =
+      preSha !== null
+        ? await changeCountBetween(conversationId, preSha, sha)
+        : null;
     return {
       ok: true,
       degraded: false,
-      restored: targetPaths.size,
-      deleted: toDelete.length,
+      restored: counts?.restored ?? targetPaths.size,
+      deleted: counts?.deleted ?? toDelete.length,
       skipped: [],
       preSha,
     };
