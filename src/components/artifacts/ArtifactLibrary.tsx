@@ -108,7 +108,7 @@ export function ArtifactLibrary() {
         {loading ? (
           <p className="py-12 text-sm text-text-secondary">Loading artifacts…</p>
         ) : error ? (
-          <p className="py-12 text-sm text-red-300">{error}</p>
+          <p className="py-12 text-sm text-danger">{error}</p>
         ) : visibleArtifacts.length === 0 ? (
           <div className="flex flex-col items-center py-20 text-center">
             <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-hover text-text-secondary">

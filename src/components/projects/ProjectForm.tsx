@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { AlertCircle } from "lucide-react";
-import type { ProjectSummary } from "@/lib/types";
+import type { ProjectIconName, ProjectSummary } from "@/lib/types";
 import { useProjectStore } from "@/store/projects";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { ProjectGlyph } from "./projectVisuals";
+import { ProjectIcon, PROJECT_ICON_OPTIONS } from "./projectVisuals";
 
 export interface ProjectFormProps {
   open: boolean;
@@ -28,6 +28,7 @@ export function ProjectForm({ open, project, onClose, onCreated }: ProjectFormPr
   const saving = useProjectStore((s) => s.saving);
 
   const [name, setName] = useState("");
+  const [icon, setIcon] = useState<ProjectIconName>("folder");
   const [localError, setLocalError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,6 +38,7 @@ export function ProjectForm({ open, project, onClose, onCreated }: ProjectFormPr
     if (!open) return;
     setLocalError(null);
     setName(project?.name ?? "");
+    setIcon(project?.icon ?? "folder");
     // Focus + select after the modal mounts.
     requestAnimationFrame(() => inputRef.current?.select());
   }, [open, project]);
@@ -50,13 +52,13 @@ export function ProjectForm({ open, project, onClose, onCreated }: ProjectFormPr
     const trimmed = name.trim();
 
     if (project) {
-      const ok = await update(project.id, { name: trimmed });
+      const ok = await update(project.id, { name: trimmed, icon });
       if (ok) onClose();
       else setLocalError(useProjectStore.getState().error || "Failed to rename project");
       return;
     }
 
-    const created = await create({ name: trimmed });
+    const created = await create({ name: trimmed, icon });
     if (created) {
       onClose();
       onCreated?.(created.id);
@@ -74,7 +76,9 @@ export function ProjectForm({ open, project, onClose, onCreated }: ProjectFormPr
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
         <div className="flex items-center gap-3">
-          <ProjectGlyph id={project?.id ?? "new-project-preview"} size={40} />
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-text-secondary">
+            <ProjectIcon icon={icon} size={22} />
+          </span>
           <input
             ref={inputRef}
             value={name}
@@ -88,8 +92,36 @@ export function ProjectForm({ open, project, onClose, onCreated }: ProjectFormPr
           instructions and files once it&apos;s created.
         </p>
 
+        <fieldset>
+          <legend className="mb-2 text-xs font-medium text-text-secondary">
+            Project icon
+          </legend>
+          <div className="grid grid-cols-5 gap-1.5">
+            {PROJECT_ICON_OPTIONS.map((option) => {
+              const selected = icon === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  aria-label={option.label}
+                  aria-pressed={selected}
+                  title={option.label}
+                  onClick={() => setIcon(option.id)}
+                  className={`flex h-9 items-center justify-center rounded-lg border transition-colors ${
+                    selected
+                      ? "border-accent bg-accent/15 text-accent"
+                      : "border-border text-text-secondary hover:bg-hover hover:text-text-primary"
+                  }`}
+                >
+                  <ProjectIcon icon={option.id} size={18} />
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+
         {localError && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-danger">
             <AlertCircle size={15} className="shrink-0" />
             <span className="min-w-0 flex-1">{localError}</span>
           </div>

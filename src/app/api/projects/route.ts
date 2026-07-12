@@ -5,6 +5,7 @@ import { toProjectSummary } from "@/lib/projects/dto";
 import {
   type ApiError,
   type CreateProjectRequest,
+  isProjectIconName,
   type ProjectSummary,
 } from "@/lib/types";
 
@@ -68,11 +69,17 @@ export async function POST(req: Request) {
     typeof body?.description === "string" ? body.description.trim() : "";
   const instructions =
     typeof body?.instructions === "string" ? body.instructions.trim() : "";
+  if (body.icon !== undefined && !isProjectIconName(body.icon)) {
+    return Response.json({ error: "Invalid project icon" } satisfies ApiError, {
+      status: 400,
+    });
+  }
 
   const project = await prisma.project.create({
     data: {
       userId,
       name,
+      icon: body.icon ?? "folder",
       description: description || null,
       instructions: instructions || null,
     },

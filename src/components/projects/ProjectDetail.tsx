@@ -20,7 +20,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { cn } from "@/components/ui/cn";
 import Composer from "@/components/chat/Composer";
-import { ProjectGlyph, relativeTime } from "./projectVisuals";
+import { ProjectIcon, relativeTime } from "./projectVisuals";
 import { ProjectForm } from "./ProjectForm";
 import { ProjectInstructionsModal } from "./ProjectInstructionsModal";
 import { ProjectFilesModal } from "./ProjectFilesModal";
@@ -93,13 +93,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
       <div className="flex h-full min-w-0 flex-1 flex-col">
         {error && (
-          <div className="mx-auto mt-2 flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+          <div className="mx-auto mt-2 flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-danger">
             <span className="truncate">{error}</span>
             <button
               type="button"
               aria-label="Dismiss error"
               onClick={clearError}
-              className="shrink-0 text-red-300 hover:text-red-200"
+              className="shrink-0 text-danger transition-opacity hover:opacity-80"
             >
               <X size={16} />
             </button>
@@ -128,7 +128,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             <div className="mx-auto w-full max-w-3xl px-4 pb-20 pt-12 sm:pt-16">
               {/* Header */}
               <div className="flex items-center gap-3">
-                <ProjectGlyph id={detail.id} size={36} />
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary">
+                  <ProjectIcon icon={detail.icon} size={22} />
+                </span>
                 <h1 className="min-w-0 flex-1 truncate text-2xl font-semibold text-text-primary">
                   {detail.name}
                 </h1>

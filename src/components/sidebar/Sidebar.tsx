@@ -7,9 +7,9 @@ import {
   Boxes,
   CalendarClock,
   Check,
-  ChevronRight,
   FolderClosed,
   FolderKanban,
+  Globe,
   LogOut,
   MoreHorizontal,
   PanelLeft,
@@ -30,7 +30,7 @@ import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { Modal } from "@/components/ui/Modal";
 import { SettingsModal } from "@/components/settings/SettingsModal";
 import { ProjectForm } from "@/components/projects/ProjectForm";
-import { ProjectGlyph } from "@/components/projects/projectVisuals";
+import { ProjectIcon } from "@/components/projects/projectVisuals";
 import { cn } from "@/components/ui/cn";
 
 interface Group {
@@ -96,8 +96,6 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   /** Conversation currently targeted by the "Move to project" dialog. */
   const [moveTarget, setMoveTarget] = useState<ConversationSummary | null>(null);
-  /** Ids of projects expanded to reveal their chats in the sidebar. */
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [projectEditing, setProjectEditing] = useState<ProjectSummary | null>(null);
 
@@ -121,24 +119,6 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
   );
   const groups = useMemo(() => groupConversations(recentChats), [recentChats]);
 
-  // Chats grouped by their project (input is already newest-first).
-  const chatsByProject = useMemo(() => {
-    const map: Record<string, ConversationSummary[]> = {};
-    for (const c of conversations) {
-      if (c.projectId) (map[c.projectId] ??= []).push(c);
-    }
-    return map;
-  }, [conversations]);
-
-  function toggleProject(id: string) {
-    setExpandedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   async function handleDeleteProject(p: ProjectSummary) {
     const confirmed = window.confirm(
       `Delete “${p.name}”? This permanently deletes the project along with its ` +
@@ -160,6 +140,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
   const schedulesActive = pathname === "/schedules";
   const artifactsActive = pathname === "/artifacts";
+  const sitesActive = pathname === "/sites" || pathname.startsWith("/sites/");
   const projectsActive = pathname === "/projects" || pathname.startsWith("/projects/");
 
   function beginRename(c: ConversationSummary) {
@@ -201,6 +182,13 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
             onClick={() => router.push("/artifacts")}
           >
             <Boxes size={20} />
+          </IconButton>
+          <IconButton
+            label="Sites"
+            active={sitesActive}
+            onClick={() => router.push("/sites")}
+          >
+            <Globe size={20} />
           </IconButton>
           <IconButton
             label="Scheduled"
@@ -275,9 +263,22 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
           <Boxes size={18} />
           Artifacts
         </button>
+        <button
+          type="button"
+          onClick={() => router.push("/sites")}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm font-medium transition-colors",
+            sitesActive
+              ? "bg-hover text-text-primary"
+              : "text-text-primary hover:bg-hover",
+          )}
+        >
+          <Globe size={18} />
+          Sites
+        </button>
       </div>
 
-      {/* Projects — expandable, each revealing its chats (ChatGPT-style). */}
+      {/* Projects open their dedicated workspace, which contains the project's chats. */}
       {projects.length > 0 && (
         <div className="group/section mt-1 flex flex-col gap-0.5 px-2.5">
           <div className="flex items-center justify-between px-2 pb-1 pt-2">
@@ -299,11 +300,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
             <SidebarProjectRow
               key={p.id}
               project={p}
-              chats={chatsByProject[p.id] ?? []}
-              expanded={expandedProjects.has(p.id)}
               active={pathname === `/projects/${p.id}`}
-              currentId={currentId}
-              onToggle={() => toggleProject(p.id)}
               onOpen={() => router.push(`/projects/${p.id}`)}
               onNewChat={() => router.push(`/?project=${p.id}`)}
               onRename={() => {
@@ -311,7 +308,6 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                 setProjectFormOpen(true);
               }}
               onDelete={() => void handleDeleteProject(p)}
-              onOpenChat={(id) => router.push(`/c/${id}`)}
             />
           ))}
         </div>
@@ -558,32 +554,21 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
   );
 }
 
-/** One expandable project in the sidebar: caret · glyph · name, with a hover
- *  "new chat" + kebab, and its chats nested underneath when expanded. */
+/** One project shortcut in the sidebar. Its workspace shows the project's chats. */
 function SidebarProjectRow({
   project,
-  chats,
-  expanded,
   active,
-  currentId,
-  onToggle,
   onOpen,
   onNewChat,
   onRename,
   onDelete,
-  onOpenChat,
 }: {
   project: ProjectSummary;
-  chats: ConversationSummary[];
-  expanded: boolean;
   active: boolean;
-  currentId: string | null;
-  onToggle: () => void;
   onOpen: () => void;
   onNewChat: () => void;
   onRename: () => void;
   onDelete: () => void;
-  onOpenChat: (id: string) => void;
 }) {
   return (
     <div>
@@ -595,22 +580,11 @@ function SidebarProjectRow({
       >
         <button
           type="button"
-          onClick={onToggle}
-          aria-label={expanded ? "Collapse project" : "Expand project"}
-          className="flex h-8 w-6 shrink-0 items-center justify-center text-text-secondary hover:text-text-primary"
-        >
-          <ChevronRight
-            size={14}
-            className={cn("transition-transform", expanded && "rotate-90")}
-          />
-        </button>
-        <button
-          type="button"
           onClick={onOpen}
           title={project.name}
-          className="flex min-w-0 flex-1 items-center gap-2 py-2 pr-1 text-left"
+          className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 pr-1 text-left"
         >
-          <ProjectGlyph id={project.id} size={20} radius={6} />
+          <ProjectIcon icon={project.icon} size={16} className="shrink-0 text-text-secondary" />
           <span className="min-w-0 flex-1 truncate text-sm text-text-primary">
             {project.name}
           </span>
@@ -659,30 +633,6 @@ function SidebarProjectRow({
         </div>
       </div>
 
-      {expanded &&
-        (chats.length === 0 ? (
-          <p className="py-1 pl-8 pr-2 text-xs text-text-secondary">No chats yet</p>
-        ) : (
-          <ul className="flex flex-col gap-0.5">
-            {chats.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => onOpenChat(c.id)}
-                  title={c.title}
-                  className={cn(
-                    "flex w-full items-center rounded-lg py-1.5 pl-8 pr-2 text-left text-sm transition-colors",
-                    c.id === currentId
-                      ? "bg-hover text-text-primary"
-                      : "text-text-secondary hover:bg-hover hover:text-text-primary",
-                  )}
-                >
-                  <span className="min-w-0 flex-1 truncate">{c.title}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ))}
     </div>
   );
 }

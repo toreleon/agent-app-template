@@ -7,6 +7,7 @@ import prisma from "@/lib/db";
 import { toProjectDetail, toProjectSummary } from "@/lib/projects/dto";
 import {
   type ApiError,
+  isProjectIconName,
   type UpdateProjectRequest,
 } from "@/lib/types";
 
@@ -90,6 +91,15 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       );
     }
     data.name = name;
+  }
+
+  if (body.icon !== undefined) {
+    if (!isProjectIconName(body.icon)) {
+      return Response.json({ error: "Invalid project icon" } satisfies ApiError, {
+        status: 400,
+      });
+    }
+    data.icon = body.icon;
   }
 
   // description/instructions: null clears; a string is trimmed and stored null

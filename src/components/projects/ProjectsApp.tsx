@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  FolderKanban,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { ProjectSummary } from "@/lib/types";
 import { useProjectStore } from "@/store/projects";
 import { useChatStore } from "@/store/chat";
@@ -12,7 +19,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Dropdown, DropdownItem } from "@/components/ui/Dropdown";
 import { cn } from "@/components/ui/cn";
 import { ProjectForm } from "./ProjectForm";
-import { ProjectGlyph, relativeTime } from "./projectVisuals";
+import { ProjectIcon, relativeTime } from "./projectVisuals";
 
 /** ChatGPT-style Projects overview: a clean list of the user's projects. */
 export function ProjectsApp() {
@@ -72,13 +79,13 @@ export function ProjectsApp() {
         </header>
 
         {error && (
-          <div className="mx-auto mt-1 flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+          <div className="mx-auto mt-1 flex w-full max-w-3xl items-center justify-between gap-3 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-danger">
             <span className="truncate">{error}</span>
             <button
               type="button"
               aria-label="Dismiss error"
               onClick={clearError}
-              className="shrink-0 text-red-300 hover:text-red-200"
+              className="shrink-0 text-danger transition-opacity hover:opacity-80"
             >
               <X size={16} />
             </button>
@@ -105,7 +112,9 @@ export function ProjectsApp() {
                       onClick={() => router.push(`/projects/${p.id}`)}
                       className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     >
-                      <ProjectGlyph id={p.id} size={36} />
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary">
+                        <ProjectIcon icon={p.icon} size={20} />
+                      </span>
                       <span className="flex min-w-0 flex-col">
                         <span className="truncate text-sm font-medium text-text-primary">
                           {p.name}
@@ -177,7 +186,9 @@ export function ProjectsApp() {
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 py-16 text-center">
-      <ProjectGlyph id="empty-projects-state" size={48} radius={14} />
+      <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-hover text-text-secondary">
+        <FolderKanban size={24} />
+      </span>
       <h2 className="mt-4 text-base font-semibold text-text-primary">
         No projects yet
       </h2>

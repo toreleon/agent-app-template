@@ -1,56 +1,61 @@
 "use client";
 
-import { Folder } from "lucide-react";
-import { cn } from "@/components/ui/cn";
+import {
+  BarChart3,
+  BookOpen,
+  BriefcaseBusiness,
+  Code2,
+  FolderClosed,
+  GraduationCap,
+  Heart,
+  Lightbulb,
+  Palette,
+  Rocket,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { ProjectIconName } from "@/lib/types";
 
-/**
- * ChatGPT projects show a small rounded-square folder glyph in a per-project
- * accent color. We have no color column, so derive a stable accent from the
- * project id — deterministic, so a project always looks the same.
- */
-const PROJECT_COLORS = [
-  "#7A63D1", // violet
-  "#2F86B4", // blue
-  "#3F9D6B", // green
-  "#C1662B", // orange
-  "#BC4B78", // pink
-  "#4E74B8", // indigo
-  "#9A7B2E", // gold
-  "#5B616E", // slate
+export const PROJECT_ICON_OPTIONS: Array<{
+  id: ProjectIconName;
+  label: string;
+}> = [
+  { id: "folder", label: "General" },
+  { id: "briefcase", label: "Work" },
+  { id: "code", label: "Code" },
+  { id: "book", label: "Reading" },
+  { id: "graduation", label: "Learning" },
+  { id: "lightbulb", label: "Ideas" },
+  { id: "rocket", label: "Launch" },
+  { id: "palette", label: "Design" },
+  { id: "chart", label: "Analytics" },
+  { id: "heart", label: "Personal" },
 ];
 
-export function projectColor(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return PROJECT_COLORS[h % PROJECT_COLORS.length];
-}
+const PROJECT_ICONS: Record<ProjectIconName, LucideIcon> = {
+  folder: FolderClosed,
+  briefcase: BriefcaseBusiness,
+  code: Code2,
+  book: BookOpen,
+  graduation: GraduationCap,
+  lightbulb: Lightbulb,
+  rocket: Rocket,
+  palette: Palette,
+  chart: BarChart3,
+  heart: Heart,
+};
 
-/** The accent-colored rounded-square folder badge used across the projects UI. */
-export function ProjectGlyph({
-  id,
-  size = 32,
-  radius = 10,
+/** Render the selected semantic project icon with the app's neutral icon style. */
+export function ProjectIcon({
+  icon,
+  size = 20,
   className,
 }: {
-  id: string;
+  icon: ProjectIconName;
   size?: number;
-  radius?: number;
   className?: string;
 }) {
-  return (
-    <span
-      className={cn("flex shrink-0 items-center justify-center text-white", className)}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: radius,
-        backgroundColor: projectColor(id),
-      }}
-      aria-hidden="true"
-    >
-      <Folder size={Math.round(size * 0.52)} className="fill-white/25" />
-    </span>
-  );
+  const Icon = PROJECT_ICONS[icon] ?? FolderClosed;
+  return <Icon size={size} className={className} aria-hidden="true" />;
 }
 
 /** ChatGPT-style short relative time: "Just now" · "12m" · "5h" · "Yesterday" · "Mon" · "Mar 12". */

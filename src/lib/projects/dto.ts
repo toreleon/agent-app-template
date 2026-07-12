@@ -6,6 +6,7 @@
  */
 import type { Project, ProjectFile } from "@prisma/client";
 import { toConversationSummary, type ConversationSummaryRow } from "@/lib/conversations";
+import { isProjectIconName } from "@/lib/types";
 import type {
   ProjectDetail,
   ProjectFileInfo,
@@ -37,6 +38,7 @@ export function toProjectSummary(
   return {
     id: project.id,
     name: project.name,
+    icon: isProjectIconName(project.icon) ? project.icon : "folder",
     description: project.description,
     instructions: project.instructions,
     conversationCount: counts.conversations ?? 0,

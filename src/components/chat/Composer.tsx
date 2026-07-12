@@ -5,8 +5,7 @@ import type { KeyboardEvent } from "react";
 import { ArrowUp, FileText, Sparkles, Square, X } from "lucide-react";
 import type { Attachment, ComposerProps, SkillListItem } from "@/lib/types";
 import FileUpload from "@/components/upload/FileUpload";
-import { ModelPicker } from "./ModelPicker";
-import { ReasoningEffortPicker } from "./ReasoningEffortPicker";
+import { ModelEffortPicker } from "./ModelEffortPicker";
 import { cn } from "@/components/ui/cn";
 
 const MAX_TEXTAREA_HEIGHT = 200;
@@ -310,18 +309,15 @@ export function Composer({
             )}
           </div>
 
-          {/* Footer row: model picker + reasoning effort */}
-          <div className="flex items-center justify-between px-2.5 pb-1.5">
-            <div className="flex flex-wrap items-center gap-0.5">
-              <ModelPicker
-                value={model}
-                onChange={onModelChange}
-                disabled={isStreaming}
-                side="top"
-                align="start"
-              />
-              <ReasoningEffortPicker disabled={isStreaming} side="top" align="start" />
-            </div>
+          {/* Footer row: Claude-style merged model + effort control */}
+          <div className="flex items-center justify-end px-2.5 pb-1.5">
+            <ModelEffortPicker
+              value={model}
+              onChange={onModelChange}
+              disabled={isStreaming}
+              side="top"
+              align="end"
+            />
           </div>
         </div>
 
