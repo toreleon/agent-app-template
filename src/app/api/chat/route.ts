@@ -8,7 +8,7 @@ import {
 } from "@/lib/research/orchestrator";
 import { loadProjectContext } from "@/lib/projects/prompt";
 import { loadUserContext } from "@/lib/user/prompt";
-import { loadSkillsContext } from "@/lib/plugins/context";
+import { loadSkillsContext, resolveSlashSkill } from "@/lib/plugins/context";
 import {
   applyArtifactCommand,
   toolNameToArtifactCommand,
@@ -203,7 +203,25 @@ export async function POST(req: Request) {
   // Installed plugin skills: only each enabled skill's name + description goes
   // into the prompt (progressive disclosure); the model pulls a skill's full
   // body on demand via the `skill` tool. Degrades to undefined on error.
-  const skillsContext = (await loadSkillsContext(userId)) || undefined;
+  const baseSkillsContext = (await loadSkillsContext(userId)) || undefined;
+
+  // Explicit skill invocation: a message that starts with `/<skill-name>` (a
+  // slash command from the composer menu) forces that skill for this turn. We
+  // validate the command names one of the user's enabled skills, then append a
+  // directive so the model loads it via the `skill` tool. An ordinary message
+  // that merely starts with "/" (no matching skill) is left untouched. Skipped
+  // in Deep Research mode, which doesn't run the skill-capable agent.
+  const invokedSkill = deepResearch ? null : await resolveSlashSkill(userId, message);
+  const skillsContext = invokedSkill
+    ? [
+        baseSkillsContext,
+        `The user explicitly invoked the "${invokedSkill}" skill with a slash command (/${invokedSkill}). ` +
+          `Call the \`skill\` tool with name "${invokedSkill}" to load its full instructions, then follow ` +
+          `them for this request. Treat the rest of the message (after the command) as the input to the skill.`,
+      ]
+        .filter(Boolean)
+        .join("\n\n")
+    : baseSkillsContext;
 
   // ---- Load prior history (before persisting the new user turn) ----
   const priorMessages = await prisma.message.findMany({

@@ -7,6 +7,7 @@ import {
   MAX_SKILL_BODY_BYTES,
   MAX_SKILL_FILE_BYTES,
   type PluginSkill,
+  type SkillListItem,
 } from "@/lib/types";
 import { parseSkills } from "./store";
 import { resolveWithin } from "./paths";
@@ -48,7 +49,12 @@ async function resolveSkill(
   return null;
 }
 
-/** All enabled skills across the user's enabled plugins, in stable order. */
+/**
+ * All enabled skills across the user's enabled plugins, oldest plugin first.
+ * NOT deduplicated by name — each consumer applies its own invocability filter
+ * (modelInvocable / userInvocable) and THEN dedupes, so a Claude-only skill from
+ * an older plugin can't shadow a same-named user-invocable one (or vice versa).
+ */
 async function enabledSkills(userId: string): Promise<
   Array<{ skill: PluginSkill; pluginName: string }>
 > {
@@ -57,12 +63,9 @@ async function enabledSkills(userId: string): Promise<
     orderBy: { createdAt: "asc" },
   });
   const out: Array<{ skill: PluginSkill; pluginName: string }> = [];
-  const seen = new Set<string>();
   for (const row of rows) {
     for (const skill of parseSkills(row.skillsCache)) {
       if (!skill.enabled) continue;
-      if (seen.has(skill.name)) continue; // first plugin wins the name
-      seen.add(skill.name);
       out.push({ skill, pluginName: row.name });
     }
   }
@@ -87,7 +90,13 @@ export async function loadSkillsContext(userId: string): Promise<string | null> 
   const lines: string[] = [];
   let budget = MAX_SKILLS_PROMPT_CHARS;
   let omitted = 0;
+  const seen = new Set<string>();
   for (const { skill } of skills) {
+    // `disable-model-invocation` skills are user-only (typed via /name); keep
+    // them out of the auto-suggest block so the model never triggers them itself.
+    if (skill.modelInvocable === false) continue;
+    if (seen.has(skill.name)) continue; // dedup AFTER the invocability filter
+    seen.add(skill.name);
     const line = `- ${skill.name}: ${skill.description}`;
     if (line.length > budget) {
       omitted++;
@@ -96,6 +105,8 @@ export async function loadSkillsContext(userId: string): Promise<string | null> 
     budget -= line.length;
     lines.push(line);
   }
+  // Everything was user-only → nothing to auto-suggest.
+  if (lines.length === 0) return null;
 
   const header =
     "=== Available skills ===\n" +
@@ -112,6 +123,57 @@ export async function loadSkillsContext(userId: string): Promise<string | null> 
   }
 
   return `${header}\n\n${lines.join("\n")}${footer}\n=== End available skills ===`;
+}
+
+/** Flat list of the user's enabled skills for the composer's slash menu. Never
+ *  throws — degrades to an empty list. */
+export async function listEnabledSkills(userId: string): Promise<SkillListItem[]> {
+  try {
+    const skills = await enabledSkills(userId);
+    const out: SkillListItem[] = [];
+    const seen = new Set<string>();
+    for (const { skill, pluginName } of skills) {
+      // `user-invocable: false` skills are Claude-only — never in the /menu.
+      if (skill.userInvocable === false) continue;
+      if (seen.has(skill.name)) continue; // dedup AFTER the invocability filter
+      seen.add(skill.name);
+      out.push({
+        name: skill.name,
+        description: skill.description,
+        plugin: pluginName,
+        argumentHint: skill.argumentHint,
+      });
+    }
+    return out;
+  } catch (err) {
+    console.error("[plugins] failed to list skills:", err);
+    return [];
+  }
+}
+
+/**
+ * Parse a leading `/<skill-name>` slash command from a message and, if it names
+ * one of the user's enabled skills, return that skill's canonical name.
+ * Returns null when there is no command or it doesn't match an installed skill,
+ * so an ordinary message that happens to start with "/" is left untouched.
+ */
+export async function resolveSlashSkill(
+  userId: string,
+  message: string,
+): Promise<string | null> {
+  const m = /^\/([A-Za-z0-9][A-Za-z0-9_-]*)(?:\s|$)/.exec(message.trimStart());
+  if (!m) return null;
+  const token = m[1].toLowerCase();
+  try {
+    const skills = await enabledSkills(userId);
+    const hit = skills.find(
+      ({ skill }) =>
+        skill.userInvocable !== false && skill.name.toLowerCase() === token,
+    );
+    return hit ? hit.skill.name : null;
+  } catch {
+    return null;
+  }
 }
 
 // ---- skill tool backend ---------------------------------------------------

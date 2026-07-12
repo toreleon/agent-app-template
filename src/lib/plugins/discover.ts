@@ -22,6 +22,12 @@ export interface DiscoveredSkill {
   description: string;
   /** Skill directory RELATIVE to the plugin root ("." for a root SKILL.md). */
   dir: string;
+  /** SKILL.md `user-invocable` (default true). */
+  userInvocable: boolean;
+  /** !SKILL.md `disable-model-invocation` (default true). */
+  modelInvocable: boolean;
+  /** SKILL.md `argument-hint`. */
+  argumentHint?: string;
 }
 
 export interface DiscoveredMcpServer {
@@ -151,8 +157,22 @@ export function parsePluginManifest(pluginRoot: string): PluginManifest | null {
 
 // ---- skills ---------------------------------------------------------------
 
+/**
+ * Normalize a skill name into a slash-command-safe token: lowercase, only
+ * [a-z0-9_-], no leading/trailing separators, ≤64 chars. This keeps the `/`
+ * menu, the composer's slash regex, and resolveSlashSkill in agreement, so a
+ * menu-picked command always resolves server-side (a raw name like "PDF Filler"
+ * or "pdf.tools" would otherwise be offered but never match). Returns "" when
+ * nothing usable remains, and the caller skips the skill.
+ */
 function sanitizeName(name: string): string {
-  return name.trim().slice(0, MAX_SKILL_NAME);
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^[-_]+/, "")
+    .slice(0, MAX_SKILL_NAME)
+    .replace(/[-_]+$/, "");
 }
 
 /** Parse a single skill directory (containing SKILL.md). Returns null when
@@ -187,10 +207,25 @@ function parseSkillDir(
     );
     return null;
   }
+  // Claude-Code invocation controls (all optional): `user-invocable: false` →
+  // Claude-only (no slash menu); `disable-model-invocation: true` → user-only
+  // (not auto-suggested); `argument-hint` → shown in the slash menu.
+  const bool = (v: string | undefined): boolean | undefined => {
+    const t = v?.trim().toLowerCase();
+    if (t === "true" || t === "yes" || t === "on" || t === "1") return true;
+    if (t === "false" || t === "no" || t === "off" || t === "0") return false;
+    return undefined;
+  };
+  const userInvocable = bool(data["user-invocable"]) !== false;
+  const modelInvocable = bool(data["disable-model-invocation"]) !== true;
+  const argumentHint = (data["argument-hint"] || "").trim() || undefined;
   return {
     name,
     description: description.slice(0, MAX_SKILL_DESC),
     dir,
+    userInvocable,
+    modelInvocable,
+    argumentHint,
   };
 }
 

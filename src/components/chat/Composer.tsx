@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { ArrowUp, FileText, Square, X } from "lucide-react";
-import type { Attachment, ComposerProps } from "@/lib/types";
+import { ArrowUp, FileText, Sparkles, Square, X } from "lucide-react";
+import type { Attachment, ComposerProps, SkillListItem } from "@/lib/types";
 import FileUpload from "@/components/upload/FileUpload";
 import { ModelPicker } from "./ModelPicker";
 import { ReasoningEffortPicker } from "./ReasoningEffortPicker";
@@ -50,6 +50,87 @@ export function Composer({
     ? "Ask a research question…"
     : placeholder;
 
+  // ---- Slash-command skill menu -------------------------------------------
+  // Typing "/" at the very start of the message opens an autocomplete of the
+  // user's installed skills; picking one inserts "/<skill> " so the rest of the
+  // line becomes the skill's input. The server validates the command and forces
+  // that skill for the turn (see /api/chat + resolveSlashSkill).
+  const [skills, setSkills] = useState<SkillListItem[]>([]);
+  const [menuIndex, setMenuIndex] = useState(0);
+  const [menuDismissed, setMenuDismissed] = useState(false);
+  // True once we've fetched the skill list for the CURRENT slash session; reset
+  // when the message stops being a slash command, so each new "/" refetches and
+  // picks up plugins installed/removed in Settings without a page reload.
+  const skillFetchSessionRef = useRef(false);
+
+  // The message is a slash command "in progress" iff it's a leading /token with
+  // no space yet (deep-research turns don't use skills, so suppress there).
+  const slashQuery = useMemo(() => {
+    if (deepResearch) return null;
+    const m = /^\/([A-Za-z0-9_-]*)$/.exec(value);
+    return m ? m[1].toLowerCase() : null;
+  }, [value, deepResearch]);
+
+  const filteredSkills = useMemo(() => {
+    if (slashQuery === null) return [];
+    const q = slashQuery;
+    const scored = skills
+      .map((s) => {
+        const name = s.name.toLowerCase();
+        const rank = name.startsWith(q) ? 0 : name.includes(q) ? 1 : 2;
+        return { s, rank };
+      })
+      .filter((x) => q === "" || x.rank < 2)
+      .sort((a, b) => a.rank - b.rank || a.s.name.localeCompare(b.s.name));
+    return scored.map((x) => x.s).slice(0, 8);
+  }, [skills, slashQuery]);
+
+  const menuOpen = slashQuery !== null && !menuDismissed && filteredSkills.length > 0;
+
+  // Fetch the skill list once per slash session (when the message first becomes
+  // a "/command"), refetching on each new session so the menu stays fresh.
+  useEffect(() => {
+    if (slashQuery === null) {
+      skillFetchSessionRef.current = false;
+      return;
+    }
+    if (skillFetchSessionRef.current) return;
+    skillFetchSessionRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/skills", { cache: "no-store" });
+        if (res.ok && !cancelled) {
+          setSkills((await res.json()) as SkillListItem[]);
+        }
+      } catch {
+        /* ignore — no menu */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slashQuery]);
+
+  // Reset the highlighted row whenever the query changes; clear the Escape
+  // dismissal once the message is no longer a slash command.
+  useEffect(() => setMenuIndex(0), [slashQuery]);
+  useEffect(() => {
+    if (slashQuery === null && menuDismissed) setMenuDismissed(false);
+  }, [slashQuery, menuDismissed]);
+
+  function selectSkill(skill: SkillListItem) {
+    setValue(`/${skill.name} `);
+    setMenuDismissed(false);
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    });
+  }
+
   // Adopt an external draft (suggestion card click).
   useEffect(() => {
     if (draft) {
@@ -88,6 +169,33 @@ export function Composer({
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
+    // When the slash-skill menu is open, its keys take priority over the
+    // textarea (arrow to move, Enter/Tab to pick, Escape to dismiss). Skip while
+    // an IME composition is active so confirming a candidate commits text
+    // instead of picking a skill.
+    if (menuOpen && !e.nativeEvent.isComposing) {
+      const len = filteredSkills.length;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMenuIndex((i) => (i + 1) % len);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMenuIndex((i) => (i - 1 + len) % len);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        selectSkill(filteredSkills[Math.min(menuIndex, len - 1)]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMenuDismissed(true);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       submit();
@@ -100,7 +208,15 @@ export function Composer({
 
   return (
     <div className="w-full px-4 pb-4">
-      <div className="mx-auto w-full max-w-chat">
+      <div className="relative mx-auto w-full max-w-chat">
+        {menuOpen && (
+          <SkillMenu
+            skills={filteredSkills}
+            activeIndex={Math.min(menuIndex, filteredSkills.length - 1)}
+            onHover={setMenuIndex}
+            onSelect={selectSkill}
+          />
+        )}
         <div
           className={cn(
             "flex flex-col rounded-3xl border border-border bg-composer shadow-lg transition-colors",
@@ -222,6 +338,67 @@ export function Composer({
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The `/` slash-command autocomplete: a popover above the composer listing the
+ * user's installed skills. Rendered only while a leading `/query` matches at
+ * least one skill; keyboard nav lives in the composer's onKeyDown so Enter/Tab
+ * pick a skill instead of sending.
+ */
+function SkillMenu({
+  skills,
+  activeIndex,
+  onHover,
+  onSelect,
+}: {
+  skills: SkillListItem[];
+  activeIndex: number;
+  onHover: (i: number) => void;
+  onSelect: (s: SkillListItem) => void;
+}) {
+  return (
+    <div className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-2xl border border-border bg-composer shadow-xl">
+      <div className="flex items-center gap-1.5 border-b border-border/60 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-text-secondary">
+        <Sparkles size={12} /> Skills
+      </div>
+      <ul className="max-h-64 overflow-y-auto py-1">
+        {skills.map((s, i) => (
+          <li key={`${s.plugin}/${s.name}`}>
+            <button
+              type="button"
+              // Use onMouseDown (not onClick) so the textarea doesn't blur
+              // before the selection runs.
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onSelect(s);
+              }}
+              onMouseEnter={() => onHover(i)}
+              className={cn(
+                "flex w-full flex-col gap-0.5 px-3 py-2 text-left transition-colors",
+                i === activeIndex ? "bg-hover" : "hover:bg-hover/60",
+              )}
+            >
+              <span className="flex items-center gap-2">
+                <span className="font-mono text-sm text-text-primary">
+                  /{s.name}
+                  {s.argumentHint ? (
+                    <span className="ml-1 text-text-secondary">{s.argumentHint}</span>
+                  ) : null}
+                </span>
+                <span className="truncate text-[11px] text-text-secondary">
+                  {s.plugin}
+                </span>
+              </span>
+              <span className="line-clamp-2 text-xs text-text-secondary">
+                {s.description}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

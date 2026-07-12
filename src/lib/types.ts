@@ -872,6 +872,21 @@ export interface PluginSkill {
   dir: string;
   /** When false, the skill is hidden from the prompt and the `skill` tool. */
   enabled: boolean;
+  /**
+   * SKILL.md `user-invocable` (default true). When false the skill is Claude-
+   * only — hidden from the `/` slash menu and not user-invocable — but the model
+   * may still load it automatically. Optional for back-compat (absent ⇒ true).
+   */
+  userInvocable?: boolean;
+  /**
+   * The inverse of SKILL.md `disable-model-invocation` (default false → true
+   * here). When false the model never auto-loads the skill (kept out of the
+   * "Available skills" prompt block) — it only runs when the user types
+   * `/name`. Optional for back-compat (absent ⇒ true).
+   */
+  modelInvocable?: boolean;
+  /** SKILL.md `argument-hint` (e.g. "[issue-number]"), shown in the `/` menu. */
+  argumentHint?: string;
 }
 
 /**
@@ -927,6 +942,19 @@ export interface UpdatePluginRequest {
 /** PATCH /api/plugins/[id]/skills/[skill] body. */
 export interface UpdateSkillRequest {
   enabled: boolean;
+}
+
+/**
+ * One enabled skill, flattened across the user's enabled plugins — the payload
+ * of GET /api/skills that backs the composer's `/` slash-command menu.
+ */
+export interface SkillListItem {
+  name: string;
+  description: string;
+  /** The plugin that provides the skill (shown as a subtle source label). */
+  plugin: string;
+  /** SKILL.md `argument-hint`, shown after the command in the menu. */
+  argumentHint?: string;
 }
 
 /**

@@ -16,6 +16,8 @@ export {
 } from "./store";
 export {
   loadSkillsContext,
+  listEnabledSkills,
+  resolveSlashSkill,
   loadSkillBody,
   readSkillFile,
 } from "./context";

@@ -33,6 +33,10 @@ export function parseSkills(cache: string | null): PluginSkill[] {
         description: s.description,
         dir: s.dir,
         enabled: s.enabled !== false,
+        userInvocable: s.userInvocable !== false,
+        modelInvocable: s.modelInvocable !== false,
+        argumentHint:
+          typeof s.argumentHint === "string" ? s.argumentHint : undefined,
       }));
   } catch {
     return [];
@@ -119,6 +123,9 @@ export async function persistInstall(
           description: s.description,
           dir: s.dir,
           enabled: true,
+          userInvocable: s.userInvocable,
+          modelInvocable: s.modelInvocable,
+          argumentHint: s.argumentHint,
         }));
 
         const row = await tx.plugin.create({
