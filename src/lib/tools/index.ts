@@ -4,6 +4,7 @@ import { runJavascriptTool } from "./run-javascript";
 import { hostedWebSearchTool, webSearchFunctionTool } from "./web-search";
 import { webFetchTool } from "./web-fetch";
 import { artifactTools } from "./artifacts";
+import { siteTools } from "./sites";
 import { readFileTool } from "./read-file";
 import { listDirTool } from "./list-dir";
 import { grepSearchTool } from "./grep-search";
@@ -11,6 +12,7 @@ import { editFileTool } from "./edit-file";
 import { writeFileTool } from "./write-file";
 import { runShellTool } from "./run-shell";
 import { skillTool } from "./skill";
+import { runSubagentsTool } from "./run-subagents";
 
 /**
  * The full set of tools available to the chat agent. Order is not significant;
@@ -40,6 +42,10 @@ export const agentTools: Tool[] = [
   runJavascriptTool,
   getCurrentTimeTool,
   ...artifactTools,
+  // Sites: build + publish a standalone, shareable web page (create/update/deploy).
+  // Intercepted by /api/chat like the artifact tools; deploy is gated by the
+  // user's sitesAutoDeploy opt-in. See src/lib/sites.ts.
+  ...siteTools,
   // Coding sandbox (local, per-conversation workspace).
   readFileTool,
   listDirTool,
@@ -51,6 +57,11 @@ export const agentTools: Tool[] = [
   // enabled skills — it just reports "no such skill". Reads the calling user's
   // skills via the RunContext userId (see src/lib/agent.ts), never a model arg.
   skillTool,
+  // Parallel subagents (Claude-Desktop-style orchestrator → workers). Dispatches
+  // independent subtasks as concurrent, read-only research agents. Intercepted by
+  // /api/chat (like the artifact/site tools) so its progress renders as the rich
+  // "Subagents" panel instead of a generic tool card. See src/lib/subagents.
+  runSubagentsTool,
 ];
 
 export {
@@ -60,6 +71,7 @@ export {
   webSearchFunctionTool,
   webFetchTool,
   artifactTools,
+  siteTools,
   readFileTool,
   listDirTool,
   grepSearchTool,
@@ -67,4 +79,5 @@ export {
   writeFileTool,
   runShellTool,
   skillTool,
+  runSubagentsTool,
 };
