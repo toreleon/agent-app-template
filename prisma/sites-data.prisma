@@ -1,0 +1,94 @@
+// ---------------------------------------------------------------------------
+// ISOLATED datastore for the Sites "deployable mini-app" data plane (Phase 1).
+//
+// This is a SECOND, SEPARATE SQLite database + Prisma client, deliberately
+// distinct from the primary app DB (prisma/schema.prisma → dev.db). Rationale
+// (from the design's adversarial security review): SQLite is single-writer per
+// file, so anonymous PUBLIC writes to a Site's data must NEVER share a writer
+// with the app's authenticated traffic (login, chat) — else a write flood is a
+// whole-app DoS. Keeping it a separate schema/client also means the mini-app
+// feature touches NO shared file (no edit to the primary schema, no regen of the
+// main client) — important while the primary schema is concurrently edited.
+//
+// The client is generated to a custom path (src/generated/sites-data-client,
+// gitignored) so it never clobbers the default @prisma/client. Access goes
+// exclusively through src/lib/sites/data-db.ts (WAL + busy_timeout + a
+// tenant-scoped repository whose methods take siteId as a required first arg).
+//
+// There are NO cross-database foreign keys: every row references the primary
+// Site by its plain string id (`siteId`); orphan cleanup is done in app code
+// (the Site delete cascade), exactly like the app's other emulated cascades.
+//
+//   prisma generate --schema=prisma/sites-data.prisma
+//   prisma db push  --schema=prisma/sites-data.prisma   (creates sites-data.db)
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/sites-data-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SITES_DATA_URL")
+}
+
+/// Per-site backend config + master switch. Lives HERE (not as columns on the
+/// primary Site) so the app DB stays untouched by the mini-app plane. Keyed by
+/// the primary Site.id. A Site with no row here has the backend OFF.
+model SiteBackendConfig {
+  siteId         String   @id
+  enabled        Boolean  @default(false) // master switch; data writes off until true
+  dataQuotaBytes Int      @default(5242880) // 5 MiB/site
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+/// Per-site key/value store: counters, saved state, small config. `scope` is
+/// "shared" now (one value per key, seen by every visitor); "visitor:<tok>"
+/// arrives with per-visitor identity (Phase 2).
+model SiteKV {
+  id         String   @id @default(cuid())
+  siteId     String
+  collection String
+  key        String
+  value      String // JSON, size-capped by the handler
+  scope      String   @default("shared")
+  updatedAt  DateTime @updatedAt
+
+  @@unique([siteId, collection, key, scope])
+  @@index([siteId, collection])
+}
+
+/// Per-site append-only document collections: guestbook entries, poll votes,
+/// form submissions. Read policy (owner-only vs public) is enforced by the
+/// handler, not stored here.
+model SiteDocument {
+  id         String   @id @default(cuid())
+  siteId     String
+  collection String
+  data       String // JSON
+  createdAt  DateTime @default(now())
+
+  @@index([siteId, collection, createdAt])
+}
+
+/// Denormalized per-site usage counters, updated in the SAME transaction as a
+/// write so quota enforcement is atomic (no check-then-write race, no SUM() per
+/// write).
+model SiteUsage {
+  siteId String @id
+  bytes  Int    @default(0)
+  rows   Int    @default(0)
+}
+
+/// Durable, bounded rate-limit buckets keyed by hash(siteId|ipBlock|window).
+/// Lives in this DB (not in-process) so limits survive restarts and are shared
+/// across workers; a sweeper hard-evicts expired rows so the table is bounded.
+model SiteRateBucket {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
