@@ -1,5 +1,9 @@
 # OpenAgent
 
+<p align="center">
+  <img src="docs/demo.gif" alt="OpenAgent — streaming chat with a live Thinking panel, a model &middot; effort picker, and syntax-highlighted code" width="900">
+</p>
+
 A clean, batteries-included starting point for building **production agent apps** with the
 [OpenAI Agents SDK](https://github.com/openai/openai-agents-js) and **Next.js 14** (App Router).
 
