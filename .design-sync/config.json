@@ -1,0 +1,34 @@
+{
+  "pkg": "openagent",
+  "globalName": "OpenAgentUI",
+  "projectId": "a07e062a-37bb-42ec-9db3-771a3412a624",
+  "shape": "package",
+  "buildCmd": "bash .design-sync/build-css.sh",
+  "readmeHeader": ".design-sync/conventions.md",
+  "srcDir": "src/components/ui",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".design-sync/.cache/ds-compiled.css",
+  "extraFonts": [".design-sync/fonts/inter.css"],
+  "guidelinesGlob": [],
+  "overrides": {
+    "Modal": { "cardMode": "single", "primaryStory": "Standard", "viewport": "680x460" }
+  },
+  "componentSrcMap": {
+    "Button": "src/components/ui/Button.tsx",
+    "Dropdown": "src/components/ui/Dropdown.tsx",
+    "DropdownItem": "src/components/ui/Dropdown.tsx",
+    "IconButton": "src/components/ui/IconButton.tsx",
+    "Modal": "src/components/ui/Modal.tsx",
+    "Spinner": "src/components/ui/Spinner.tsx",
+    "Tooltip": "src/components/ui/Tooltip.tsx"
+  },
+  "dtsPropsFor": {
+    "Button": "  /** Visual style. Defaults to \"primary\". */\n  variant?: \"primary\" | \"secondary\" | \"ghost\" | \"outline\";\n  /** Control height. Defaults to \"md\". */\n  size?: \"sm\" | \"md\" | \"lg\";\n  /** Show a leading spinner and disable the button while true. */\n  loading?: boolean;\n  children?: React.ReactNode;\n  className?: string;\n  disabled?: boolean;\n  type?: \"button\" | \"submit\" | \"reset\";\n  onClick?: React.MouseEventHandler<HTMLButtonElement>;",
+    "IconButton": "  /** Accessible label; rendered as aria-label and title. Required. */\n  label: string;\n  /** Control size. Defaults to \"md\". */\n  size?: \"sm\" | \"md\" | \"lg\";\n  /** Persistent pressed/active styling. */\n  active?: boolean;\n  /** Icon element (e.g. a lucide-react icon). */\n  children?: React.ReactNode;\n  className?: string;\n  disabled?: boolean;\n  onClick?: React.MouseEventHandler<HTMLButtonElement>;",
+    "Spinner": "  className?: string;\n  /** Pixel size of the spinner. Defaults to 16. */\n  size?: number;",
+    "Tooltip": "  /** Tooltip text shown on hover/focus. */\n  label: string;\n  /** The element the tooltip is attached to. */\n  children: React.ReactNode;\n  /** Which side of the trigger the tooltip appears on. Defaults to \"top\". */\n  side?: \"top\" | \"bottom\";\n  className?: string;",
+    "Modal": "  /** Whether the modal is visible. */\n  open: boolean;\n  /** Called on Escape, overlay click, or the close button. */\n  onClose: () => void;\n  /** Optional header title. */\n  title?: React.ReactNode;\n  children: React.ReactNode;\n  className?: string;",
+    "Dropdown": "  /** The element that toggles the menu. */\n  trigger: React.ReactNode;\n  /** Render-prop for the menu body; receives a `close` callback to dismiss the menu. */\n  children: (close: () => void) => React.ReactNode;\n  /** Horizontal alignment of the menu relative to the trigger. Defaults to \"start\". */\n  align?: \"start\" | \"end\";\n  /** Vertical placement relative to the trigger. Defaults to \"bottom\". */\n  side?: \"top\" | \"bottom\";\n  className?: string;\n  menuClassName?: string;\n  /** When true, the trigger does not open the menu. */\n  disabled?: boolean;",
+    "DropdownItem": "  /** Click handler for the menu item. */\n  onClick?: () => void;\n  children: React.ReactNode;\n  /** Destructive (red) styling. */\n  danger?: boolean;\n  /** Highlighted/selected styling. */\n  active?: boolean;\n  className?: string;"
+  }
+}
