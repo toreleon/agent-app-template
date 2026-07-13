@@ -26,6 +26,7 @@ sites-data.db-wal
 # Installed Claude plugins (src/lib/plugins/*). Cloned/copied per user — never
 # commit them.
 /.plugins
+/.playwright-mcp
 *.log
 .DS_Store
 next-env.d.ts
