@@ -1,0 +1,17 @@
+/* @font-face for Inter (latin), the app's brand sans (loaded via next/font in
+   the real app). Weights 400 + 600 cover the primitives' font-normal /
+   font-medium / font-semibold usage; 500 font-matches down to 400. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./Inter-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./Inter-latin-600.woff2") format("woff2");
+}

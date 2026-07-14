@@ -1,0 +1,54 @@
+/*
+ * Class-scoped theme wrappers for the design-sync preview cards.
+ *
+ * The app applies its light theme via `:root.light` (the `light` class on
+ * <html>), so light tokens are only reachable from the document root. Preview
+ * cards need to show a component on BOTH surfaces within one card, so we
+ * re-expose the full dark and light palettes as ordinary classes whose custom
+ * properties cascade to any subtree. `.ds-dark` / `.ds-light` also paint the
+ * surface + text color + brand font so a wrapped block reads as a real app
+ * surface. Appended verbatim to the compiled Tailwind CSS (build-css.sh).
+ */
+.ds-dark,
+.ds-light {
+  background-color: rgb(var(--color-main));
+  color: rgb(var(--color-text-primary));
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Dark palette (:root default in globals.css). */
+.ds-dark {
+  --color-sidebar: 23 23 23;
+  --color-main: 33 33 33;
+  --color-user-bubble: 47 47 47;
+  --color-assistant-bubble: 33 33 33;
+  --color-composer: 47 47 47;
+  --color-border: 64 64 64;
+  --color-text-primary: 236 236 236;
+  --color-text-secondary: 161 161 170;
+  --color-accent: 16 163 127;
+  --color-accent-hover: 13 138 107;
+  --color-hover: 42 42 42;
+  --color-code-bg: 13 13 13;
+  --color-code-header: 23 23 23;
+  --color-danger: 248 113 113;
+}
+
+/* Light palette (:root.light overrides; accent/accent-hover inherit dark). */
+.ds-light {
+  --color-sidebar: 247 247 248;
+  --color-main: 255 255 255;
+  --color-user-bubble: 244 244 244;
+  --color-assistant-bubble: 255 255 255;
+  --color-composer: 244 244 244;
+  --color-border: 227 227 227;
+  --color-text-primary: 13 13 13;
+  --color-text-secondary: 108 108 118;
+  --color-accent: 16 163 127;
+  --color-accent-hover: 13 138 107;
+  --color-hover: 236 236 236;
+  --color-code-bg: 246 248 250;
+  --color-code-header: 240 241 243;
+  --color-danger: 220 38 38;
+}
